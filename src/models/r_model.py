@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from database.core import Base # Assuming you have a file named database.py with a Base class
+from database.core import Base 
 
 class User(Base):
     __tablename__ = "users"

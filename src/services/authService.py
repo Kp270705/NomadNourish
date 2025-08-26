@@ -7,9 +7,8 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 import os
 
-from ..database.core import get_db
-from ..models.r_schema import (UserCreate, User)
-from ..models.r_model import (User as UserModel, Restaurant as RestaurantModel)
+from database.core import get_db
+from models.r_model import (User as UserModel, Restaurant as RestaurantModel)
 
 
 # 🔑 JWT & Password setup
@@ -33,11 +32,12 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # Use a single token URL for both user and restaurant login
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 
 def get_current_user_or_restaurant(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
+    print(f"\n\n\tIn GCUOR...")
     """
     Decodes the JWT token and returns the authenticated user or restaurant object.
     """
