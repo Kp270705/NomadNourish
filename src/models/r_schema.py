@@ -72,3 +72,15 @@ class Feedback(FeedbackBase):
 class RestaurantOverview(BaseModel):
     name: str
     ratings: Optional[float] = 0.0 # Optional and with a default value
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: str | None = None
+
+
+class CuisineCreate(CuisineBase):
+    pass
