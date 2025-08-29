@@ -23,6 +23,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     # Attempt to authenticate as a user
     user = db.query(UserModel).filter(UserModel.username == form_data.username).first()
     if user and verify_password(form_data.password, user.password):
+        print(f"\n\nUser trying to access: {user.username}")
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username, "is_restaurant": False}, 
@@ -33,6 +34,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     # If not a user, attempt to authenticate as a restaurant
     restaurant = db.query(RestaurantModel).filter(RestaurantModel.name == form_data.username).first()
     if restaurant and verify_password(form_data.password, restaurant.password):
+        print(f"\n\nRestaurant trying to access: {restaurant.name}")
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": restaurant.name, "is_restaurant": True}, 

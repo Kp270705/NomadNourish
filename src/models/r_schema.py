@@ -9,6 +9,7 @@ class UserBase(BaseModel):
 class RestaurantBase(BaseModel):
     name: str
     location: str
+    image_url: Optional[str] = None # Make this field optional
 
 class CuisineBase(BaseModel):
     cuisine_name: str
@@ -22,12 +23,23 @@ class FeedbackBase(BaseModel):
     comments: str
     rating: float
 
+
+
 # Schemas for creating new objects (e.g., in a POST request)
 class UserCreate(UserBase):
     password: str
 
 class RestaurantCreate(RestaurantBase):
     password: str
+
+# schemas for updating existing objects (e.g., in a PUT request)
+class UserUpdate(UserBase):
+    password: Optional[str] = None
+
+class RestaurantUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    image_url: Optional[str] = None
 
 # ================================================================
 

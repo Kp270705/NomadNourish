@@ -21,8 +21,8 @@ class Restaurant(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True, index=True)
     password: Mapped[str] = mapped_column(String)
-    location: Mapped[str] = mapped_column(String) # For now, a simple string. Later, consider using specific geospatial types.
-    
+    location: Mapped[str] = mapped_column(String) 
+    image_url: Mapped[str] = mapped_column(String, nullable=True)
     # Relationships
     cuisines = relationship("Cuisine", back_populates="restaurant")
     orders = relationship("Order", back_populates="restaurant")
