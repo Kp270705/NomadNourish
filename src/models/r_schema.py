@@ -23,7 +23,7 @@ class FeedbackBase(BaseModel):
     comments: str
     rating: float
 
-
+# =======================================
 
 # Schemas for creating new objects (e.g., in a POST request)
 class UserCreate(UserBase):
@@ -31,6 +31,9 @@ class UserCreate(UserBase):
 
 class RestaurantCreate(RestaurantBase):
     password: str
+
+class CuisineCreate(CuisineBase):
+    pass
 
 # schemas for updating existing objects (e.g., in a PUT request)
 class UserUpdate(UserBase):
@@ -41,7 +44,7 @@ class RestaurantUpdate(BaseModel):
     location: Optional[str] = None
     image_url: Optional[str] = None
 
-# ================================================================
+# ======================================
 
 
 # Schemas for API responses (e.g., in a GET request)
@@ -60,6 +63,7 @@ class Restaurant(RestaurantBase):
 class Cuisine(CuisineBase):
     id: int
     restaurant_id: int
+    restaurant_specific_cuisine_id: Optional[int] = None  # New field for restaurant-specific ID
 
     class Config:
         from_attributes = True
@@ -84,6 +88,7 @@ class Feedback(FeedbackBase):
 class RestaurantOverview(BaseModel):
     name: str
     ratings: Optional[float] = 0.0 # Optional and with a default value
+    location: str
 
 
 class Token(BaseModel):
@@ -93,6 +98,3 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: str | None = None
 
-
-class CuisineCreate(CuisineBase):
-    pass

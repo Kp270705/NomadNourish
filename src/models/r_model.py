@@ -36,6 +36,8 @@ class Cuisine(Base):
     cuisine_price: Mapped[float] = mapped_column(Float)
     
     restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurants.id"))
+
+    restaurant_specific_cuisine_id: Mapped[int] = mapped_column(Integer, nullable=True)  # New field for restaurant-specific ID
     
     # Relationships
     restaurant = relationship("Restaurant", back_populates="cuisines")
