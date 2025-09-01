@@ -9,7 +9,8 @@ class UserBase(BaseModel):
 class RestaurantBase(BaseModel):
     name: str
     location: str
-    image_url: Optional[str] = None # Make this field optional
+    mobile_number: str
+    gstIN: str
 
 class CuisineBase(BaseModel):
     cuisine_name: str
@@ -56,6 +57,7 @@ class User(UserBase):
 
 class Restaurant(RestaurantBase):
     id: int
+    image_url: Optional[str] = None
     
     class Config:
         from_attributes = True

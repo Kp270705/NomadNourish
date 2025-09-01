@@ -1,14 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from sqlalchemy.orm import Session 
-from sqlalchemy import func
-from typing import Optional, Annotated, Union, List
+from typing import Optional, Union, List
 import os, uuid
 
 from database.core import get_db
 from services.authService import get_password_hash
-from models.r_schema import (RestaurantCreate, Restaurant, CuisineCreate, Cuisine)
-from models.r_model import (Restaurant as RestaurantModel, Cuisine as CuisineModel)
+from models.r_schema import (RestaurantCreate, Restaurant)
+from models.r_model import (Restaurant as RestaurantModel)
 from .service import get_current_restaurant
 from dotenv import load_dotenv
 
@@ -46,11 +44,11 @@ except Exception as e:
 
 @router.post("/register", response_model=Restaurant)
 def create_restaurant(restaurant: RestaurantCreate, db: Session = Depends(get_db)):
-    db_restaurant = db.query(RestaurantModel).filter(RestaurantModel.name == restaurant.name).first()
+    db_restaurant = db.query(RestaurantModel).filter(RestaurantModel.gstIN == restaurant.gstIN).first()
     if db_restaurant:
         raise HTTPException(status_code=400, detail="Restaurant already exists")
     hashed_password = get_password_hash(restaurant.password)
-    db_restaurant = RestaurantModel(name=restaurant.name, password=hashed_password, location=restaurant.location)
+    db_restaurant = RestaurantModel(name=restaurant.name, password=hashed_password, location=restaurant.location, mobile_number=restaurant.mobile_number, gstIN=restaurant.gstIN)
     db.add(db_restaurant)
     db.commit()
     db.refresh(db_restaurant)
@@ -63,6 +61,16 @@ def get_restaurant(restaurant_id: int, db: Session = Depends(get_db)):
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found")
     return restaurant
+
+
+@router.get("/get_all", response_model=List[Restaurant])
+def get_all_restaurants(db: Session = Depends(get_db)):
+    """
+    Retrieves a list of all restaurants with their details.
+    """
+    restaurants = db.query(RestaurantModel).all()
+    return restaurants
+
 
 # used to edit restaurant details:
 @router.patch("/update_details", response_model=Restaurant)
@@ -117,64 +125,4 @@ def update_restaurant_details(
     db.refresh(current_restaurant)
     return current_restaurant
 
-
-@router.get("/get_all", response_model=List[Restaurant])
-def get_all_restaurants(db: Session = Depends(get_db)):
-    """
-    Retrieves a list of all restaurants with their details.
-    """
-    restaurants = db.query(RestaurantModel).all()
-    return restaurants
-
-
-# ==========================================================
-# 🔹 CUISINE APIs (Restaurant Protected)
-# ... (all other restaurant routes) ...
-
-@router.post("/cuisine/register", response_model=Cuisine)
-def create_cuisine(
-    cuisine: CuisineCreate,
-    db: Session = Depends(get_db),
-    current_restaurant: RestaurantModel = Depends(get_current_restaurant)
-):
-    # 1. Find the highest existing restaurant_specific_cuisine_id for this restaurant
-    max_id = db.query(func.max(CuisineModel.restaurant_specific_cuisine_id)).filter(
-        CuisineModel.restaurant_id == current_restaurant.id
-    ).scalar()
-
-    # 2. Set the new ID, handling the case of the first cuisine
-    new_cuisine_id = (max_id or 0) + 1
-
-    # 3. Create the new Cuisine object with the calculated ID
-    db_cuisine = CuisineModel(
-        cuisine_name=cuisine.cuisine_name,
-        cuisine_price=cuisine.cuisine_price,
-        restaurant_id=current_restaurant.id,
-        restaurant_specific_cuisine_id=new_cuisine_id
-    )
-
-    db.add(db_cuisine)
-    db.commit()
-    db.refresh(db_cuisine)
-    return db_cuisine
-
-
-@router.get("/cuisine/get_all", response_model=list[Cuisine])
-def list_cuisines(db: Session = Depends(get_db)):
-    return db.query(CuisineModel).all()
-
-
-#  New API to get a particular hotel's dishes
-@router.get("/get_cuisines_by_restaurant_id/{restaurant_id}", response_model=List[Cuisine])
-def get_restaurant_cuisines(restaurant_id: int, db: Session = Depends(get_db)):
-    """
-    Retrieves all cuisine details for a specific restaurant.
-    """
-    cuisines = db.query(CuisineModel).filter(CuisineModel.restaurant_id == restaurant_id).all()
-    if not cuisines:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="No cuisines found for this restaurant."
-        )
-    return cuisines
 
