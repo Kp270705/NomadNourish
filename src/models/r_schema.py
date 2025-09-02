@@ -38,7 +38,8 @@ class CuisineCreate(CuisineBase):
 
 # schemas for updating existing objects (e.g., in a PUT request)
 class UserUpdate(UserBase):
-    password: Optional[str] = None
+    name: Optional[str] = None
+    image_url: Optional[str] = None
 
 class RestaurantUpdate(BaseModel):
     name: Optional[str] = None
@@ -94,8 +95,11 @@ class RestaurantOverview(BaseModel):
 
 
 class Token(BaseModel):
+    message:str
+    user_type: str
     access_token: str
     token_type: str
+    user_details: list[str]
 
 class TokenData(BaseModel):
     username: str | None = None

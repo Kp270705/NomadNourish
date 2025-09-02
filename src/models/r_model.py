@@ -9,6 +9,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     password: Mapped[str] = mapped_column(String)
+    image_url: Mapped[str] = mapped_column(String, nullable=True)
     is_hotel_owner: Mapped[bool] = mapped_column(default=False)
     
     # Relationships
