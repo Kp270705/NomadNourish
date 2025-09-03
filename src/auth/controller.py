@@ -28,10 +28,11 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         print(f"\n\nUser trying to access: {user.email}")
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": f"user_id_{user.id}", "is_restaurant": False, "user_id":user.email}, 
+            data={"sub": user.table_id, "is_restaurant": False, "user_id":user.email}, 
             expires_delta=access_token_expires
         )
-        user_details = [user.username, user.email]
+        print(f"\n\n\tAccess Token: {access_token}\n\n")
+        user_details = [user.username, user.email, user.image_url]
         return JSONResponse(content={
             "message": 'user is authenticated', 
             "user_type": 'user', 
@@ -46,9 +47,10 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         print(f"\n\nRestaurant trying to access: {restaurant.name}")
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": f"restaurant_id_{restaurant.id}", "is_restaurant": True, "user_id":restaurant.gstIN}, 
+            data={"sub": restaurant.table_id, "is_restaurant": True, "user_id": restaurant.gstIN},
             expires_delta=access_token_expires
         )
+        print(f"\n\n\tAccess Token: {access_token}\n\n")
         user_details = [restaurant.name, restaurant.location, restaurant.mobile_number, restaurant.image_url, restaurant.gstIN]
         return JSONResponse(content={
             "message": 'restaurant is authenticated', 

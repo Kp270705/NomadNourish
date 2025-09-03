@@ -56,9 +56,9 @@ def get_current_user_or_restaurant(token: Annotated[str, Depends(oauth2_scheme)]
         raise credentials_exception
     
     if is_restaurant:
-        entity = db.query(RestaurantModel).filter(RestaurantModel.name == username).first()
+        entity = db.query(RestaurantModel).filter(RestaurantModel.table_id == username).first()
     else:
-        entity = db.query(UserModel).filter(UserModel.username == username).first()
+        entity = db.query(UserModel).filter(UserModel.table_id == username).first()
 
     if entity is None:
         raise credentials_exception

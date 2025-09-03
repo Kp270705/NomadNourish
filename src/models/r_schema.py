@@ -5,7 +5,7 @@ from typing import Optional, List
 class UserBase(BaseModel):
     username: str
     email: EmailStr
-    
+
 class RestaurantBase(BaseModel):
     name: str
     location: str
@@ -52,14 +52,17 @@ class RestaurantUpdate(BaseModel):
 # Schemas for API responses (e.g., in a GET request)
 class User(UserBase):
     id: int
-    
+    image_url: Optional[str] = None
+    table_id: Optional[str] = None
+
     class Config:
         from_attributes = True
 
 class Restaurant(RestaurantBase):
     id: int
     image_url: Optional[str] = None
-    
+    table_id: Optional[str] = None
+
     class Config:
         from_attributes = True
 

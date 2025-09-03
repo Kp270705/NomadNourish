@@ -6,6 +6,7 @@ class User(Base):
     __tablename__ = "users"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    table_id: Mapped[str] = mapped_column(String, nullable=False)
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     password: Mapped[str] = mapped_column(String)
@@ -20,6 +21,7 @@ class Restaurant(Base):
     __tablename__ = "restaurants"
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    table_id: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, unique=True, index=True)
     password: Mapped[str] = mapped_column(String)
     location: Mapped[str] = mapped_column(String)

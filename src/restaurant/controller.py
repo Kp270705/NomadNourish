@@ -8,6 +8,7 @@ from services.authService import get_password_hash
 from models.r_schema import (RestaurantCreate, Restaurant)
 from models.r_model import (Restaurant as RestaurantModel)
 from .service import get_current_restaurant
+from services.authService import get_current_user_or_restaurant
 from dotenv import load_dotenv
 
 
@@ -48,10 +49,21 @@ def create_restaurant(restaurant: RestaurantCreate, db: Session = Depends(get_db
     if db_restaurant:
         raise HTTPException(status_code=400, detail="Restaurant already exists")
     hashed_password = get_password_hash(restaurant.password)
-    db_restaurant = RestaurantModel(name=restaurant.name, password=hashed_password, location=restaurant.location, mobile_number=restaurant.mobile_number, gstIN=restaurant.gstIN)
+    db_restaurant = RestaurantModel(
+        name=restaurant.name,
+        password=hashed_password,
+        location=restaurant.location,
+        mobile_number=restaurant.mobile_number,
+        gstIN=restaurant.gstIN
+    )
     db.add(db_restaurant)
     db.commit()
     db.refresh(db_restaurant)
+
+    db_restaurant.table_id = f"restro_id_{db_restaurant.id}"
+    db.commit()
+    db.refresh(db_restaurant)
+
     return db_restaurant
 
 
@@ -69,7 +81,21 @@ def get_all_restaurants(db: Session = Depends(get_db)):
     Retrieves a list of all restaurants with their details.
     """
     restaurants = db.query(RestaurantModel).all()
-    return restaurants
+    
+    restaurant_list = []
+    for r in restaurants:
+        restaurant_list.append({
+            "id": r.id,  # Include the required 'id' field
+            "name": r.name,
+            "location": r.location,
+            # Ensure fields that can be None are converted to an empty string,
+            # or update your Pydantic model to allow Optional[str]
+            "mobile_number": r.mobile_number if r.mobile_number is not None else "",
+            "image_url": r.image_url if r.image_url is not None else "",
+            "gstIN": r.gstIN if r.gstIN is not None else "",
+        })
+        
+    return restaurant_list
 
 
 # used to edit restaurant details:
