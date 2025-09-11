@@ -2,70 +2,76 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 
 # Base schemas for creating and updating data
-class UserBase(BaseModel):
-    username: str
-    email: EmailStr
 
+# Cuisines: 
+class CuisineBase(BaseModel):
+    cuisine_name: str
+    cuisine_price: float
+
+
+# Feedbacks:
+class FeedbackBase(BaseModel):
+    comments: str
+    rating: float
+
+
+# Orders:
+class OrderBase(BaseModel):
+    items: List[str]
+    total_price: float
+
+
+# Restaurants:
 class RestaurantBase(BaseModel):
     name: str
     location: str
     mobile_number: str
     gstIN: str
 
-class CuisineBase(BaseModel):
-    cuisine_name: str
-    cuisine_price: float
 
-class OrderBase(BaseModel):
-    items: List[str]
-    total_price: float
+# Users:
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
 
-class FeedbackBase(BaseModel):
-    comments: str
-    rating: float
 
 # =======================================
 
 # Schemas for creating new objects (e.g., in a POST request)
-class UserCreate(UserBase):
-    password: str
 
-class RestaurantCreate(RestaurantBase):
-    password: str
-
+# Cuisines:
 class CuisineCreate(CuisineBase):
     pass
 
+# Restaurants:
+class RestaurantCreate(RestaurantBase):
+    password: str
+
+# Users:
+class UserCreate(UserBase):
+    password: str
+
+
+
+# ========================================
+
 # schemas for updating existing objects (e.g., in a PUT request)
-class UserUpdate(UserBase):
-    name: Optional[str] = None
-    image_url: Optional[str] = None
 
 class RestaurantUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
     image_url: Optional[str] = None
 
+class UserUpdate(UserBase):
+    name: Optional[str] = None
+    image_url: Optional[str] = None
+
 # ======================================
 
-
 # Schemas for API responses (e.g., in a GET request)
-class User(UserBase):
-    id: int
-    image_url: Optional[str] = None
-    table_id: Optional[str] = None
 
-    class Config:
-        from_attributes = True
 
-class Restaurant(RestaurantBase):
-    id: int
-    image_url: Optional[str] = None
-    table_id: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
+# Cuisines:
 class Cuisine(CuisineBase):
     id: int
     restaurant_id: int
@@ -74,14 +80,8 @@ class Cuisine(CuisineBase):
     class Config:
         from_attributes = True
 
-class Order(OrderBase):
-    id: int
-    user_id: int
-    restaurant_id: int
 
-    class Config:
-        from_attributes = True
-
+# Feedbacks:
 class Feedback(FeedbackBase):
     id: int
     restaurant_id: int
@@ -91,12 +91,44 @@ class Feedback(FeedbackBase):
     class Config:
         from_attributes = True
 
+
+# Orders:
+class Order(OrderBase):
+    id: int
+    user_id: int
+    restaurant_id: int
+    order_date: str
+
+    class Config:
+        from_attributes = True
+
+class OrderResponse(BaseModel):
+    id:int
+    items:str
+    total_price:float
+    restaurant_id: int
+    restaurant_name: str # Add this new field
+    order_date: str
+
+    class Config:
+        from_attributes = True
+
+# Users & Restaurants:
 class RestaurantOverview(BaseModel):
     name: str
     ratings: Optional[float] = 0.0 # Optional and with a default value
     location: str
 
+class Restaurant(RestaurantBase):
+    id: int
+    image_url: Optional[str] = None
+    table_id: Optional[str] = None
 
+    class Config:
+        from_attributes = True
+
+
+# Tokens: 
 class Token(BaseModel):
     message:str
     user_type: str
@@ -107,3 +139,12 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: str | None = None
 
+
+# Users: 
+class User(UserBase):
+    id: int
+    image_url: Optional[str] = None
+    table_id: Optional[str] = None
+
+    class Config:
+        from_attributes = True

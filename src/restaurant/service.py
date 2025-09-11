@@ -3,7 +3,6 @@ from typing import Annotated
 
 
 from services.authService import get_current_user_or_restaurant 
-from models.r_schema import (RestaurantCreate, Restaurant)
 from models.r_model import (Restaurant as RestaurantModel)
 
 

@@ -56,6 +56,7 @@ class Order(Base):
     
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurants.id"))
+    order_date:Mapped[str] = mapped_column(String)
     
     # Relationships
     user = relationship("User", back_populates="orders")
@@ -75,3 +76,5 @@ class Feedback(Base):
     # Relationships
     user = relationship("User", back_populates="feedbacks")
     restaurant = relationship("Restaurant", back_populates="feedbacks")
+
+    

@@ -43,13 +43,13 @@ def create_cuisine(
 
 
 
-@router.get("/cuisine/get_all", response_model=list[Cuisine])
+@router.get("/get_all", response_model=list[Cuisine])
 def list_cuisines(db: Session = Depends(get_db)):
     return db.query(CuisineModel).all()
 
 
 #  New API to get a particular hotel's dishes
-@router.get("/get_cuisines_by_restaurant_id/{restaurant_id}", response_model=List[Cuisine])
+@router.get("/cuisines_by_restaurant_id/{restaurant_id}", response_model=List[Cuisine])
 def get_restaurant_cuisines(restaurant_id: int, db: Session = Depends(get_db)):
     """
     Retrieves all cuisine details for a specific restaurant.
@@ -61,3 +61,6 @@ def get_restaurant_cuisines(restaurant_id: int, db: Session = Depends(get_db)):
             detail="No cuisines found for this restaurant."
         )
     return cuisines
+
+
+# <CircleMinusSolid class="shrink-0 h-6 w-6" />
