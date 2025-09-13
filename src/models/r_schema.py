@@ -80,6 +80,11 @@ class Cuisine(CuisineBase):
     class Config:
         from_attributes = True
 
+class RestaurantMenuResponse(BaseModel):
+    restaurant_name: str
+    restaurant_location: str
+    cuisines: List[Cuisine]
+
 
 # Feedbacks:
 class Feedback(FeedbackBase):

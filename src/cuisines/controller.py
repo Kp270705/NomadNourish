@@ -5,7 +5,7 @@ from typing import List
 import os, uuid
 
 from database.core import get_db
-from models.r_schema import (CuisineCreate, Cuisine)
+from models.r_schema import (CuisineCreate, Cuisine, RestaurantMenuResponse)
 from models.r_model import (Restaurant as RestaurantModel, Cuisine as CuisineModel)
 from restaurant.service import get_current_restaurant
 
@@ -49,18 +49,18 @@ def list_cuisines(db: Session = Depends(get_db)):
 
 
 #  New API to get a particular hotel's dishes
-@router.get("/cuisines_by_restaurant_id/{restaurant_id}", response_model=List[Cuisine])
+@router.get("/cuisines_by_restaurant_id/{restaurant_id}", response_model=RestaurantMenuResponse)
 def get_restaurant_cuisines(restaurant_id: int, db: Session = Depends(get_db)):
-    """
-    Retrieves all cuisine details for a specific restaurant.
-    """
+    restaurant = db.query(RestaurantModel).filter(RestaurantModel.id == restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found.")
+
     cuisines = db.query(CuisineModel).filter(CuisineModel.restaurant_id == restaurant_id).all()
-    if not cuisines:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="No cuisines found for this restaurant."
-        )
-    return cuisines
+    
+    # Combine the data into the new response schema
+    return {
+        "restaurant_name": restaurant.name,
+        "restaurant_location": restaurant.location,
+        "cuisines": cuisines
+    }
 
-
-# <CircleMinusSolid class="shrink-0 h-6 w-6" />
