@@ -17,7 +17,7 @@ router = APIRouter(
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(UserModel).filter(UserModel.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=409, detail="User already registered, enter unique name or email_id")
     hashed_password = get_password_hash(user.password)
     db_user = UserModel(
         username=user.username,

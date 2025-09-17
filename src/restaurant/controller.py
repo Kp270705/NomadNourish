@@ -152,3 +152,11 @@ def update_restaurant_details(
     return current_restaurant
 
 
+@router.get("/me", response_model=Restaurant)
+def get_my_restaurant_details(
+    current_restaurant: RestaurantModel = Depends(get_current_restaurant)
+):
+    """
+    Retrieves the details for the current authenticated restaurant owner.
+    """
+    return current_restaurant
