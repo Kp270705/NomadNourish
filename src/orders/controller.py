@@ -10,6 +10,7 @@ from services.authService import get_current_user_or_restaurant
 from models.r_schema import OrderBase, Order, OrderResponse
 from models.r_model import (Order as OrderModel, User as UserModel, Restaurant as RestaurantModel)
 from user.service import get_current_user
+from restaurant.service import get_current_restaurant
 
 router = APIRouter(
     prefix='/order',
@@ -19,6 +20,7 @@ router = APIRouter(
 # ==========================================================
 # 🔹 ORDER APIs
 
+# For Users:
 @router.post("/orders/{restaurant_id}", response_model=Order)
 def create_order(
     restaurant_id: int,
@@ -65,36 +67,34 @@ def create_order(
     return res
 
 
+# @router.get("/orders/{order_id}", response_model=OrderResponse)
+# def get_order_details(
+#     order_id: int,
+#     db: Session = Depends(get_db),
+#     current_user:UserModel= Depends(get_current_user)
 
-@router.get("/orders/{order_id}", response_model=OrderResponse)
-def get_order_details(
-    order_id: int,
-    db: Session = Depends(get_db),
-    current_user:UserModel= Depends(get_current_user)
+# ):
+#     """
+#     Retrieves a single order for the authenticated user.
+#     """
+#     if not isinstance(current_user, UserModel):
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail="You are not authorized to view this order."
+#         )
 
-):
-    """
-    Retrieves a single order for the authenticated user.
-    """
-    if not isinstance(current_user, UserModel):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not authorized to view this order."
-        )
-
-    order = db.query(OrderModel).filter(
-        OrderModel.id == order_id, 
-        OrderModel.user_id == current_user.id
-    ).first()
+#     order = db.query(OrderModel).filter(
+#         OrderModel.id == order_id, 
+#         OrderModel.user_id == current_user.id
+#     ).first()
     
-    if not order:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found or you don't have permission to view it.")
+#     if not order:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found or you don't have permission to view it.")
 
-    return order
+#     return order
 
 
-
-@router.get("/my-orders", response_model=list[OrderResponse])
+@router.get("/user/my-orders", response_model=list[OrderResponse])
 def get_user_orders(
     db: Session = Depends(get_db),
     current_user:UserModel= Depends(get_current_user)
@@ -120,3 +120,36 @@ def get_user_orders(
         result.append(order_dict)
 
     return result
+
+
+
+# ==============================================================
+# For Restaurants: 
+
+# fetching restaurants order history: 
+@router.get("/restaurant/my-orders", response_model=list[OrderResponse])
+def get_restaurant_orders(
+    db: Session = Depends(get_db),
+    current_restaurant: RestaurantModel = Depends(get_current_restaurant)
+):
+    """
+    Retrieves all orders for the authenticated restaurant owner.
+    """
+    if not isinstance(current_restaurant, RestaurantModel):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only restaurant owners can view their orders."
+        )
+    
+    orders = db.query(OrderModel).filter(OrderModel.restaurant_id == current_restaurant.id).all()
+    
+    # We must manually map the data to the Pydantic schema here.
+    result = []
+    for order in orders:
+        order_dict = order.__dict__
+        order_dict['restaurant_name'] = current_restaurant.name # Get name from current user
+        result.append(order_dict)
+    
+    return result
+
+

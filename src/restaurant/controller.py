@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Form, File
+from fastapi import UploadFile
+# from starlette.datastructures import UploadFile
 from sqlalchemy.orm import Session 
 from typing import Optional, Union, List
 import os, uuid
@@ -22,6 +24,8 @@ GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
 GCP_BUCKET_NAME = os.getenv("GCP_BUCKET_NAME")
 GCP_APPLICATION_CREDENTIALS = os.getenv("GCP_APPLICATION_CREDENTIALS")
 print(f"\n\n\tgcp creds: {GCP_APPLICATION_CREDENTIALS}")
+print(f"\n\n\tgcp bucket name: {GCP_BUCKET_NAME}")
+print(f"\n\n\tgcp project_id: {GCP_PROJECT_ID}")
 
 router = APIRouter(
     prefix='/restaurant',
@@ -100,56 +104,52 @@ def get_all_restaurants(db: Session = Depends(get_db)):
 
 # used to edit restaurant details:
 @router.patch("/update_details", response_model=Restaurant)
-def update_restaurant_details(
+
+async def update_restaurant_details(
     db: Session = Depends(get_db),
     current_restaurant: RestaurantModel = Depends(get_current_restaurant),
-    name: str = Form(None),
-    location: str = Form(None),
-    image: Optional[Union[UploadFile, str]] = File(None)
+    name: str | None = Form(None),
+    location: str | None = Form(None),
+    image: UploadFile | None = File(None),
 ):
-    """
-    Updates the current restaurant's details, including the image.
-    """
-    print(f"\n\n\tIn restro update details")
+    print("▶️ In restro update details")
+    print(f"Type of 'image' is: {type(image)}")
+
     if name:
         current_restaurant.name = name
     if location:
         current_restaurant.location = location
 
-    if image and isinstance(image, UploadFile) and image.filename:
-        if not storage_client or not bucket:
-            raise HTTPException(status_code=500, detail="Google Cloud Storage is not configured properly.")
+    if image is not None:
+        print("✅ SUCCESS: The isinstance check passed!")
+        print(f"Image filename is: {image.filename}")
 
         if not image.filename:
-            raise HTTPException(status_code=400, detail="Image has no name. Please select a valid image.")
+            raise HTTPException(status_code=400, detail="Please select a valid image.")
 
+        if not storage_client or not bucket:
+            raise HTTPException(status_code=500, detail="GCS not configured properly.")
+        
         try:
-            # Generate a unique filename to avoid conflicts
-            file_extension = os.path.splitext(image.filename)[1]
-            unique_filename = f"{uuid.uuid4()}{file_extension}"
 
-            # Create a new blob (file) in the GCS bucket
-            blob = bucket.blob(unique_filename)
+            file_ext = os.path.splitext(image.filename)[1]
+            unique_name = f"{uuid.uuid4()}{file_ext}"
 
-            # Upload the file content
+            blob = bucket.blob(unique_name)
+
+            # `image.file` is a SpooledTemporaryFile – reset pointer
             image.file.seek(0)
             blob.upload_from_file(image.file, content_type=image.content_type)
 
-            # Get the public URL of the uploaded file
-            public_url = blob.public_url
-
-            current_restaurant.image_url = public_url
-
-        except exceptions.GoogleAPICallError as e:
-            print(f"GCS API Error: {e}")
-            raise HTTPException(status_code=500, detail=f"An error occurred with Google Cloud Storage: {e}")
+            current_restaurant.image_url = blob.public_url
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
+            print(f"Image is not Uploaded,due to this: 👇 👇 👇\n\t{e}")
+
 
     db.commit()
     db.refresh(current_restaurant)
     return current_restaurant
+
 
 
 @router.get("/me", response_model=Restaurant)

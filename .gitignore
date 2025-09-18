@@ -4,6 +4,10 @@ env/
 # files:
 .vscode/
 
+.envFiles:
+RL_Cloud_Json.json
+.env
+
 
 # Project Dirs:
 __pycache__/

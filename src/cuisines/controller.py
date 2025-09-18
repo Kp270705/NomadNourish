@@ -16,7 +16,7 @@ router = APIRouter(
     tags=['cuisine']
 )
 
-@router.post("/cuisine/register", response_model=Cuisine)
+@router.post("/register", response_model=Cuisine)
 def create_cuisine(
     cuisine: CuisineCreate,
     db: Session = Depends(get_db),
