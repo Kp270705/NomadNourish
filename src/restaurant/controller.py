@@ -23,9 +23,9 @@ load_dotenv()
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
 GCP_BUCKET_NAME = os.getenv("GCP_BUCKET_NAME")
 GCP_APPLICATION_CREDENTIALS = os.getenv("GCP_APPLICATION_CREDENTIALS")
-print(f"\n\n\tgcp creds: {GCP_APPLICATION_CREDENTIALS}")
-print(f"\n\n\tgcp bucket name: {GCP_BUCKET_NAME}")
-print(f"\n\n\tgcp project_id: {GCP_PROJECT_ID}")
+# print(f"\n\n\tgcp creds: {GCP_APPLICATION_CREDENTIALS}")
+# print(f"\n\n\tgcp bucket name: {GCP_BUCKET_NAME}")
+# print(f"\n\n\tgcp project_id: {GCP_PROJECT_ID}")
 
 router = APIRouter(
     prefix='/restaurant',
@@ -160,3 +160,4 @@ def get_my_restaurant_details(
     Retrieves the details for the current authenticated restaurant owner.
     """
     return current_restaurant
+
