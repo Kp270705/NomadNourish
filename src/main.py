@@ -13,6 +13,7 @@ origins = [
     "http://localhost.tiangolo.com",
     "https://localhost.tiangolo.com",
     "http://localhost:5173",
+    "https://nomad-nourish-ui.vercel.app/"
     "http://localhost:8080",
 ]
 
