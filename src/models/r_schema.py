@@ -132,6 +132,11 @@ class Restaurant(RestaurantBase):
     class Config:
         from_attributes = True
 
+# stats:
+class AppStats(BaseModel):
+    total_customers: int
+    total_restaurants: int
+    total_orders: int
 
 # Tokens: 
 class Token(BaseModel):

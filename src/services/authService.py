@@ -43,6 +43,13 @@ def get_current_user_or_restaurant(
     """
     Decodes the JWT token and returns the authenticated user or restaurant object.
     """
+
+    if is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been blacklisted"
+        )
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Login again with correct credentials",
@@ -66,3 +73,12 @@ def get_current_user_or_restaurant(
         raise credentials_exception
     
     return entity
+
+
+# The in-memory token blacklist
+TOKEN_BLACKLIST = set()
+# ... (all your existing functions like get_password_hash, create_access_token) ...
+
+def is_token_blacklisted(token: str) -> bool:
+    """Checks if a token is in the blacklist."""
+    return token in TOKEN_BLACKLIST

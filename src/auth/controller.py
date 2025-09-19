@@ -9,6 +9,13 @@ from database.core import get_db
 from services.authService import get_current_user_or_restaurant, get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from models.r_schema import (Token)
 from models.r_model import (User as UserModel, Restaurant as RestaurantModel)
+from services.authService import (
+    verify_password, 
+    create_access_token, 
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    oauth2_scheme,
+    TOKEN_BLACKLIST,
+)
 
 
 router = APIRouter(
@@ -63,3 +70,11 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     # If no match is found
     raise HTTPException(status_code=401, detail="Incorrect username or password")
 
+
+@router.post("/logout")
+def logout_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    """
+    Logs out the user by blacklisting their current token.
+    """
+    TOKEN_BLACKLIST.add(token)
+    return {"message": "Successfully logged out"}
