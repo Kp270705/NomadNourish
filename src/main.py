@@ -1,3 +1,5 @@
+# main.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,7 +15,7 @@ origins = [
     "http://localhost.tiangolo.com",
     "https://localhost.tiangolo.com",
     "http://localhost:5173",
-    "https://nomad-nourish-ui.vercel.app"
+    "https://nomad-nourish-ui.vercel.app",  # Add a comma here
     "http://localhost:8080",
 ]
 
