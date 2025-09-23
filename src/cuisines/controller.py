@@ -5,7 +5,7 @@ from typing import List
 import os, uuid
 
 from database.core import get_db
-from models.r_schema import (CuisineCreate, Cuisine, RestaurantMenuResponse)
+from models.r_schema import (CuisineCreate, Cuisine, RestaurantMenuResponse, CuisineUpdate)
 from models.r_model import (Restaurant as RestaurantModel, Cuisine as CuisineModel)
 from restaurant.service import get_current_restaurant
 
@@ -42,6 +42,58 @@ def create_cuisine(
     return db_cuisine
 
 
+@router.patch("/{cuisine_id}", response_model=Cuisine)
+def update_cuisine(
+    cuisine_id: int,
+    cuisine_data: CuisineUpdate,
+    db: Session = Depends(get_db),
+    current_restaurant: RestaurantModel = Depends(get_current_restaurant)
+):
+    # Find the cuisine and verify it belongs to the current restaurant
+    db_cuisine = db.query(CuisineModel).filter(
+        CuisineModel.id == cuisine_id,
+        CuisineModel.restaurant_id == current_restaurant.id
+    ).first()
+
+    if not db_cuisine:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cuisine not found or does not belong to this restaurant."
+        )
+    
+    # Update fields if provided
+    for key, value in cuisine_data.model_dump().items():
+        if value is not None:
+            setattr(db_cuisine, key, value)
+            
+    db.commit()
+    db.refresh(db_cuisine)
+    return db_cuisine
+
+# 🔹 New API to delete a cuisine
+@router.delete("/{cuisine_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_cuisine(
+    cuisine_id: int,
+    db: Session = Depends(get_db),
+    current_restaurant: RestaurantModel = Depends(get_current_restaurant)
+):
+    # Find the cuisine and verify it belongs to the current restaurant
+    db_cuisine = db.query(CuisineModel).filter(
+        CuisineModel.id == cuisine_id,
+        CuisineModel.restaurant_id == current_restaurant.id
+    ).first()
+
+    if not db_cuisine:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cuisine not found or does not belong to this restaurant."
+        )
+
+    db.delete(db_cuisine)
+    db.commit()
+    return
+
+
 
 @router.get("/get_all", response_model=list[Cuisine])
 def list_cuisines(db: Session = Depends(get_db)):
@@ -64,3 +116,15 @@ def get_restaurant_cuisines(restaurant_id: int, db: Session = Depends(get_db)):
         "cuisines": cuisines
     }
 
+
+# when restaurants create cuisine, this will show their existing cuisines: 
+@router.get("/my-cuisines", response_model=List[Cuisine])
+def get_my_cuisines(
+    db: Session = Depends(get_db),
+    current_restaurant: RestaurantModel = Depends(get_current_restaurant)
+):
+    """
+    Retrieves all cuisines for the current authenticated restaurant.
+    """
+    cuisines = db.query(CuisineModel).filter(CuisineModel.restaurant_id == current_restaurant.id).all()
+    return cuisines

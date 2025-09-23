@@ -81,19 +81,14 @@ def get_restaurant(restaurant_id: int, db: Session = Depends(get_db)):
 
 @router.get("/get_all", response_model=List[Restaurant])
 def get_all_restaurants(db: Session = Depends(get_db)):
-    """
-    Retrieves a list of all restaurants with their details.
-    """
     restaurants = db.query(RestaurantModel).all()
     
     restaurant_list = []
     for r in restaurants:
         restaurant_list.append({
-            "id": r.id,  # Include the required 'id' field
+            "id": r.id,
             "name": r.name,
             "location": r.location,
-            # Ensure fields that can be None are converted to an empty string,
-            # or update your Pydantic model to allow Optional[str]
             "mobile_number": r.mobile_number if r.mobile_number is not None else "",
             "image_url": r.image_url if r.image_url is not None else "",
             "gstIN": r.gstIN if r.gstIN is not None else "",

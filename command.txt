@@ -1,1 +1,1 @@
-pip install pyjwt "passlib[bcrypt]" google-cloud google-cloud-storage sqlalchemy "fastapi[standard]" python-jose
+pip install pyjwt "passlib[bcrypt]>=1.7.0,<1.8.0" bcrypt==3.2.0 google-cloud google-cloud-storage sqlalchemy "fastapi[standard]" python-jose

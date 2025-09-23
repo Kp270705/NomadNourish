@@ -57,6 +57,11 @@ class UserCreate(UserBase):
 
 # schemas for updating existing objects (e.g., in a PUT request)
 
+# New schema for updating a cuisine
+class CuisineUpdate(BaseModel):
+    cuisine_name: Optional[str] = None
+    cuisine_price: Optional[float] = None
+
 class RestaurantUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
