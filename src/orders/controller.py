@@ -147,7 +147,7 @@ def get_restaurant_orders(
     result = []
     for order in orders:
         order_dict = order.__dict__
-        order_dict['restaurant_name'] = current_restaurant.name # Get name from current user
+        order_dict['restaurant_name'] = current_restaurant.name # Get name from current restaurant
         result.append(order_dict)
     
     return result
