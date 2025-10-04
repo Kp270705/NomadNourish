@@ -27,10 +27,6 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-
-    db_user.table_id = f"user_id_{db_user.id}"
-    db.commit()
-    db.refresh(db_user)
     
     return db_user
 

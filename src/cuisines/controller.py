@@ -31,7 +31,9 @@ def create_cuisine(
     # 3. Create the new Cuisine object with the calculated ID
     db_cuisine = CuisineModel(
         cuisine_name=cuisine.cuisine_name,
-        cuisine_price=cuisine.cuisine_price,
+        price_half=cuisine.price_half,
+        price_full=cuisine.price_full,
+        category=cuisine.category,
         restaurant_id=current_restaurant.id,
         restaurant_specific_cuisine_id=new_cuisine_id
     )

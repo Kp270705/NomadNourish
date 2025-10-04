@@ -1,18 +1,30 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List, Literal 
+from uuid import UUID
 
 # Base schemas for creating and updating data
+
+DietaryCategory = Literal["Veg", "Non-Veg", "Egg"]
+OrderStatus = Literal["Pending", "Preparing", "Ready", "Delivered", "Cancelled"]
+
+# restro status: 
+OperatingStatus = Literal["Open", "Closed"]
+KitchenStatus = Literal["Normal", "Busy", "Emergency"]
+DeliveryStatus = Literal["Active", "Inactive"]
+
 
 # Cuisines: 
 class CuisineBase(BaseModel):
     cuisine_name: str
-    cuisine_price: float
+    price_full: float = Field(..., gt=0) # Must be greater than zero
+    price_half: Optional[float] = Field(None, gt=0)
+    category: DietaryCategory
 
 
 # Feedbacks:
 class FeedbackBase(BaseModel):
-    comments: str
-    rating: float
+    comments: Optional[str] = None
+    rating: Optional[float] = None
 
 
 # Orders:
@@ -27,6 +39,8 @@ class RestaurantBase(BaseModel):
     location: str
     mobile_number: str
     gstIN: str
+    support_email: EmailStr
+    announcement_text: Optional[str] = None
 
 
 # Users:
@@ -60,12 +74,20 @@ class UserCreate(UserBase):
 # New schema for updating a cuisine
 class CuisineUpdate(BaseModel):
     cuisine_name: Optional[str] = None
-    cuisine_price: Optional[float] = None
+    price_full: Optional[float] = Field(None, gt=0)
+    price_half: Optional[float] = Field(None, gt=0)
+    category: Optional[DietaryCategory] = None
 
 class RestaurantUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
     image_url: Optional[str] = None
+    announcement_text: Optional[str] = None
+
+class RestaurantStatusUpdate(BaseModel):
+    operating_status: Optional[OperatingStatus] = None
+    kitchen_status: Optional[KitchenStatus] = None
+    delivery_status: Optional[DeliveryStatus] = None
 
 class UserUpdate(UserBase):
     name: Optional[str] = None
@@ -85,11 +107,6 @@ class Cuisine(CuisineBase):
     class Config:
         from_attributes = True
 
-class RestaurantMenuResponse(BaseModel):
-    restaurant_name: str
-    restaurant_location: str
-    cuisines: List[Cuisine]
-
 
 # Feedbacks:
 class Feedback(FeedbackBase):
@@ -107,19 +124,20 @@ class Order(OrderBase):
     id: int
     user_id: int
     restaurant_id: int
-    order_date: str
+    status: OrderStatus # Add the new status field
 
     class Config:
         from_attributes = True
 
 class OrderResponse(BaseModel):
-    id:int
-    items:str
-    total_price:float
+    id: int
+    items: str
+    total_price: float
     restaurant_id: int
-    restaurant_name: str # Add this new field
+    restaurant_name: str
     order_date: str
-
+    status: OrderStatus # Add the new status field
+    
     class Config:
         from_attributes = True
 
@@ -131,11 +149,20 @@ class RestaurantOverview(BaseModel):
 
 class Restaurant(RestaurantBase):
     id: int
+    operating_status: str
+    kitchen_status: str
+    delivery_status: str
     image_url: Optional[str] = None
-    table_id: Optional[str] = None
+    table_id: Optional[UUID] = None 
 
     class Config:
         from_attributes = True
+
+
+class RestaurantMenuResponse(BaseModel):
+    restaurant_name: str
+    restaurant_location: str
+    cuisines: List[Cuisine]
 
 # stats:
 class AppStats(BaseModel):

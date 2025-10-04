@@ -1,7 +1,17 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
+import os
 
-DB_URL = "sqlitecloud://cjd2p1bqhk.g6.sqlite.cloud:8860/test.db?apikey=0ukPyeLQzVCz88wHE8wbaaWnZErI3Z5x10eKT8gx82I"
+
+load_dotenv()
+DB_URL = os.getenv(
+    "DATABASE_URL",
+    # "PG_PRODUCTION_DB_URI", # this is for future use
+)
+
+if not DB_URL:
+    raise ValueError("DATABASE_URL environment variable is not set.")
 
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -13,4 +23,6 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
 
