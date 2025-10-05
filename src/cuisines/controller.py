@@ -66,6 +66,7 @@ def update_cuisine(
     # Update fields if provided
     for key, value in cuisine_data.model_dump().items():
         if value is not None:
+            print(f"\n\nUpdating {key} to {value}\n\n")
             setattr(db_cuisine, key, value)
             
     db.commit()

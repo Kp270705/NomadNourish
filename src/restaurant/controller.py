@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, File
+from fastapi import APIRouter, Depends, HTTPException, Form, File, Query
 from fastapi import UploadFile, status
 # from starlette.datastructures import UploadFile
 from sqlalchemy.orm import Session 
@@ -9,23 +9,22 @@ from database.core import get_db
 from services.authService import get_password_hash
 from models.r_schema import (RestaurantCreate, Restaurant, RestaurantStatusUpdate)
 from models.r_model import (Restaurant as RestaurantModel)
-from .service import get_current_restaurant
+from .service import get_current_restaurant, get_restaurant_status_by_id
 from services.authService import get_current_user_or_restaurant
 from dotenv import load_dotenv
+import json
 
 
 # For Google Cloud Storage
 from google.oauth2 import service_account
 from google.cloud import storage
 from google.api_core import exceptions
+from cache.redis_client import get_redis_client
 
 load_dotenv()
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
 GCP_BUCKET_NAME = os.getenv("GCP_BUCKET_NAME")
 GCP_APPLICATION_CREDENTIALS = os.getenv("GCP_APPLICATION_CREDENTIALS")
-# print(f"\n\n\tgcp creds: {GCP_APPLICATION_CREDENTIALS}")
-# print(f"\n\n\tgcp bucket name: {GCP_BUCKET_NAME}")
-# print(f"\n\n\tgcp project_id: {GCP_PROJECT_ID}")
 
 router = APIRouter(
     prefix='/restaurant',
@@ -76,23 +75,38 @@ def get_restaurant(restaurant_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/get_all", response_model=List[Restaurant])
-def get_all_restaurants(db: Session = Depends(get_db)):
-    restaurants = db.query(RestaurantModel).all()
+def get_all_restaurants(
+    db: Session = Depends(get_db),
+    redis_client = Depends(get_redis_client),
+    location: Optional[str] = Query(None, description="Optional filter by city/location")
+    ):
+    # restaurants = db.query(RestaurantModel).all()
+    query = db.query(RestaurantModel)
+    if location:
+        query = query.filter(
+            RestaurantModel.location.ilike(f"%{location}%")
+        )
     
-    restaurant_list = []
-    for r in restaurants:
-        restaurant_list.append({
-            "id": r.id,
-            "name": r.name,
-            "location": r.location,
-            "mobile_number": r.mobile_number if r.mobile_number is not None else "",
-            "image_url": r.image_url if r.image_url is not None else "",
-            "gstIN": r.gstIN if r.gstIN is not None else "",
-            "support_email": r.support_email if r.support_email is not None else "",
-            "table_id": r.table_id if r.table_id is not None else "",
-        })
+    db_restaurants = query.all()
+    final_restaurants = []
+    for rest in db_restaurants:
+        # Get the status from Redis/DB using the caching utility
+        status_data = get_restaurant_status_by_id(db, redis_client, rest.id)
         
-    return restaurant_list
+        # Create a dictionary from the SQLAlchemy object
+        rest_dict = rest.__dict__
+        
+        # Inject the status fields from the cache/DB lookup
+        if status_data:
+            rest_dict['operating_status'] = status_data['operating_status']
+            rest_dict['kitchen_status'] = status_data['kitchen_status']
+            rest_dict['delivery_status'] = status_data['delivery_status']
+        
+        # NOTE: Pydantic's from_attributes=True handles most of the mapping, 
+        # but manual modification is needed to inject the status fields if they are not loaded by default.
+        final_restaurants.append(rest_dict)
+        
+    return final_restaurants
 
 
 # used to edit restaurant details:
@@ -155,6 +169,7 @@ async def update_restaurant_details(
 def update_restaurant_status(
     status_update: RestaurantStatusUpdate,
     db: Session = Depends(get_db),
+    redis_client = Depends(get_redis_client),
     current_restaurant: RestaurantModel = Depends(get_current_restaurant),
 ):
     """
@@ -178,7 +193,17 @@ def update_restaurant_status(
         
     db.commit()
     db.refresh(current_restaurant)
+
+    cache_key = f"status:restaurant:{current_restaurant.id}"
     
+    # Get the latest status data that Pydantic would use
+    status_data = {
+        "operating_status": current_restaurant.operating_status,
+        "kitchen_status": current_restaurant.kitchen_status,
+        "delivery_status": current_restaurant.delivery_status,
+    }
+    # Store the JSON string in Redis (Set a 1 hour TTL - Time To Live)
+    redis_client.set(cache_key, json.dumps(status_data), ex=3600) 
     return current_restaurant
 
 

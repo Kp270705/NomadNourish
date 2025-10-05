@@ -1,33 +1,35 @@
-# src/cache/redis_client.py
+# src/cache/redis_client.py (FINAL VERSION)
 
 import os
-import redis
 from dotenv import load_dotenv
+# --- REPLACE standard 'redis' with 'upstash_redis' ---
+from upstash_redis import Redis 
 
 load_dotenv()
 
-# Get Redis configuration from environment variables
-REDIS_HOST = os.getenv("UPSTASH_REDIS_REST_URL", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-REDIS_PASSWORD = os.getenv("UPSTASH_REDIS_REST_TOKEN")
-
-# Create and export the Redis client instance
+# The client is initialized once, reading URL and Token from the environment.
+# Note: Upstash handles string/bytes decoding internally.
 try:
-    redis_client = redis.Redis(
-        host=REDIS_HOST,
-        port=REDIS_PORT,
-        password=REDIS_PASSWORD,
-        decode_responses=True # Decode responses to get strings instead of bytes
-    )
-    # Simple check to ensure connection works
-    redis_client.ping()
-    print("✅ Redis connection successful!")
+    # Use the synchronous client and auto-load credentials
+    redis_client = Redis.from_env() 
+    
+    # Simple check to ensure connection works (using a simple set/get instead of ping for REST clients)
+    redis_client.set('connection_test', 'success')
+    if redis_client.get('connection_test') == 'success':
+        print("✅ Upstash Redis connection successful!")
+        redis_client.delete('connection_test')
+    else:
+        raise Exception("Connection test failed after ping/set.")
+        
 except Exception as e:
-    print(f"❌ Redis connection failed: {e}")
+    print(f"❌ Upstash Redis connection failed: {e}")
+    # Note: Upstash Redis is built for REST, so it usually throws exceptions on call, 
+    # but this structure is best for checking the initial setup.
     redis_client = None
 
 def get_redis_client():
     """Dependency to provide the Redis client."""
     if redis_client is None:
-        raise Exception("Redis connection is not available.")
+        # Halt the app if the critical cache service is unavailable
+        raise Exception("Upstash Redis connection is not available.")
     return redis_client

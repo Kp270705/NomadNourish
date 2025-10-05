@@ -16,8 +16,8 @@ DeliveryStatus = Literal["Active", "Inactive"]
 # Cuisines: 
 class CuisineBase(BaseModel):
     cuisine_name: str
-    price_full: float = Field(..., gt=0) # Must be greater than zero
-    price_half: Optional[float] = Field(None, gt=0)
+    price_full: float = Field(...) # Must be greater than zero
+    price_half: Optional[float] = Field(None)
     category: DietaryCategory
 
 
@@ -74,8 +74,8 @@ class UserCreate(UserBase):
 # New schema for updating a cuisine
 class CuisineUpdate(BaseModel):
     cuisine_name: Optional[str] = None
-    price_full: Optional[float] = Field(None, gt=0)
-    price_half: Optional[float] = Field(None, gt=0)
+    price_full: Optional[float] = Field(None)
+    price_half: Optional[float] = Field(None)
     category: Optional[DietaryCategory] = None
 
 class RestaurantUpdate(BaseModel):

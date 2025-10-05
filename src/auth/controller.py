@@ -40,7 +40,12 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             expires_delta=access_token_expires
         )
         print(f"\n\n\tAccess Token: {access_token}\n\n")
-        user_details = [user.username, user.email, user.image_url]
+        user_details = {
+            "username": user.username,
+            "email": user.email,
+            "image_url": user.image_url
+        }
+        
         return JSONResponse(content={
             "message": 'user is authenticated', 
             "user_type": 'user', 
@@ -60,7 +65,14 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             expires_delta=access_token_expires
         )
         print(f"\n\n\tAccess Token: {access_token}\n\n")
-        user_details = [restaurant.name, restaurant.location, restaurant.mobile_number, restaurant.image_url, restaurant.gstIN]
+        user_details = {
+            "name": restaurant.name,
+            "location": restaurant.location,
+            "mobile_number": restaurant.mobile_number,
+            "image_url": restaurant.image_url,
+            "support_email": restaurant.support_email,
+            "gstIN": restaurant.gstIN
+        }
         return JSONResponse(content={
             "message": 'restaurant is authenticated', 
             "user_type": 'restaurant', 
