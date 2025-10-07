@@ -6,8 +6,8 @@ import os
 
 load_dotenv()
 DB_URL = os.getenv(
-    "DATABASE_URL",
-    # "PG_PRODUCTION_DB_URI", # this is for future use
+    # "DATABASE_URL",
+    "PG_PRODUCTION_DB_URI", # this is for future use
 )
 
 if not DB_URL:
