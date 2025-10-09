@@ -20,6 +20,11 @@ class CuisineBase(BaseModel):
     price_half: Optional[float] = Field(None)
     category: DietaryCategory
 
+class CuisineInfo(BaseModel):
+    cuisine_name: str
+
+    class Config:
+        from_attributes = True
 
 # Feedbacks:
 class FeedbackBase(BaseModel):
@@ -28,10 +33,10 @@ class FeedbackBase(BaseModel):
 
 
 # Orders:
-class OrderBase(BaseModel):
-    items: List[str]
-    total_price: float
-
+class OrderItemBase(BaseModel):
+    cuisine_id: int
+    quantity: int = Field(gt=0) # Must be at least 1
+    size: Literal["half", "full"]
 
 # Restaurants:
 class RestaurantBase(BaseModel):
@@ -47,7 +52,8 @@ class RestaurantBase(BaseModel):
 class UserBase(BaseModel):
     username: str
     email: EmailStr
-
+    location: Optional[str] = None
+    current_location: Optional[str] = None
 
 # =======================================
 
@@ -56,6 +62,16 @@ class UserBase(BaseModel):
 # Cuisines:
 class CuisineCreate(CuisineBase):
     pass
+
+
+# Order Item create 
+class OrderItemCreate(OrderItemBase):
+    pass
+
+class OrderBase(BaseModel):
+    items: List[OrderItemCreate]
+    client_total_price: float = Field(..., gt=0) # Must be greater than zero
+
 
 # Restaurants:
 class RestaurantCreate(RestaurantBase):
@@ -92,6 +108,7 @@ class RestaurantStatusUpdate(BaseModel):
 class UserUpdate(UserBase):
     name: Optional[str] = None
     image_url: Optional[str] = None
+    current_location: Optional[str] = None
 
 # ======================================
 
@@ -120,28 +137,45 @@ class Feedback(FeedbackBase):
 
 
 # Orders:
-class Order(OrderBase):
+
+class OrderItem(BaseModel):
+    id: int
+    quantity: int
+    size: Literal["half", "full"]
+    price_at_purchase: float
+    cuisine: CuisineInfo 
+
+    class Config:
+        from_attributes = True
+
+class Order(BaseModel):
     id: int
     user_id: int
     restaurant_id: int
     status: OrderStatus # Add the new status field
+    # This should be the backend-calculated price, which your DB object has
+    total_price: float 
+    
+    # The response should contain the list of structured items from the database relationship
+    order_items: List[OrderItem] 
 
     class Config:
         from_attributes = True
 
 class OrderResponse(BaseModel):
     id: int
-    items: str
-    total_price: float
-    restaurant_id: int
     restaurant_name: str
     order_date: str
     status: OrderStatus # Add the new status field
+    total_price: float
+    order_items: List[OrderItem]
+    restaurant_id: int
     
     class Config:
         from_attributes = True
 
-# Users & Restaurants:
+
+# Restaurants:
 class RestaurantOverview(BaseModel):
     name: str
     ratings: Optional[float] = 0.0 # Optional and with a default value
@@ -158,17 +192,18 @@ class Restaurant(RestaurantBase):
     class Config:
         from_attributes = True
 
-
 class RestaurantMenuResponse(BaseModel):
     restaurant_name: str
     restaurant_location: str
     cuisines: List[Cuisine]
+
 
 # stats:
 class AppStats(BaseModel):
     total_customers: int
     total_restaurants: int
     total_orders: int
+
 
 # Tokens: 
 class Token(BaseModel):
@@ -187,6 +222,8 @@ class User(UserBase):
     id: int
     image_url: Optional[str] = None
     table_id: Optional[str] = None
+    current_location: Optional[str] = None
 
     class Config:
         from_attributes = True
+

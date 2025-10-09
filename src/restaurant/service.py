@@ -21,6 +21,7 @@ def get_current_restaurant(entity: Annotated[RestaurantModel, Depends(get_curren
 
 
 def get_restaurant_status_by_id(db: Session, redis_client: UpstashRedisClient, restaurant_id: int):
+
     """
     Implements the Cache-Aside READ strategy.
     """
@@ -52,3 +53,4 @@ def get_restaurant_status_by_id(db: Session, redis_client: UpstashRedisClient, r
     redis_client.set(cache_key, status_json, ex=3600) # 1 hour TTL
     
     return status_data
+

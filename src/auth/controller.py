@@ -92,3 +92,4 @@ def logout_user(token: Annotated[str, Depends(oauth2_scheme)]):
     """
     TOKEN_BLACKLIST.add(token)
     return {"message": "Successfully logged out"}
+

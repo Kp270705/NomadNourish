@@ -1,16 +1,18 @@
 # src/orders/controller.py
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session 
-from typing import Annotated
+from sqlalchemy.orm import Session, joinedload
+from typing import Annotated, List
 from datetime import datetime, timezone
+import math
 
 from database.core import get_db
 from services.authService import get_current_user_or_restaurant
 from models.r_schema import OrderBase, Order, OrderResponse
-from models.r_model import (Order as OrderModel, User as UserModel, Restaurant as RestaurantModel)
+from models.r_model import (Order as OrderModel, User as UserModel, Restaurant as RestaurantModel, Cuisine as CuisineModel, OrderItem as OrderItemModel)
 from user.service import get_current_user
 from restaurant.service import get_current_restaurant
+
 
 router = APIRouter(
     prefix='/order',
@@ -21,86 +23,92 @@ router = APIRouter(
 # 🔹 ORDER APIs
 
 # For Users:
-@router.post("/orders/{restaurant_id}", response_model=Order)
+@router.post("/create/{restaurant_id}", response_model=Order)
 def create_order(
     restaurant_id: int,
-    order: OrderBase,
+    order_data: OrderBase, 
     db: Session = Depends(get_db),
-    current_user:UserModel= Depends(get_current_user)
+    current_user: UserModel = Depends(get_current_user)
 ):
     """
-    Creates a new order for the authenticated user at a specific restaurant.
+    Creates a new order. It VERIFIES the total price sent by the client
+    against a secure, backend-calculated total.
     """
-    # 1. Check if the authenticated entity is a user, not a restaurant
     if not isinstance(current_user, UserModel):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Restaurant owners cannot place orders."
         )
 
-    # 2. Convert the list of items into a single string
-    items_string = ", ".join(order.items)
-    
-    # 3. Create the new order model instance
+    # 1. Fetch all cuisine details from the DB to get the TRUE prices
+    cuisine_ids = [item.cuisine_id for item in order_data.items]
+    cuisines = db.query(CuisineModel).filter(CuisineModel.id.in_(cuisine_ids)).all()
+    cuisine_map = {c.id: c for c in cuisines}
+
+    # 2. Securely calculate the total price on the backend
+    backend_total_price = 0
+    order_items_to_create = []
+
+    for item_data in order_data.items:
+        cuisine = cuisine_map.get(item_data.cuisine_id)
+        
+        if not cuisine or cuisine.restaurant_id != restaurant_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Cuisine with id {item_data.cuisine_id} not found."
+            )
+
+        price_for_item = cuisine.price_full if item_data.size == "full" else cuisine.price_half
+        
+        if price_for_item is None:
+             raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cuisine '{cuisine.cuisine_name}' does not have a '{item_data.size}' price option."
+            )
+            
+        backend_total_price += price_for_item * item_data.quantity
+        
+        order_items_to_create.append(
+            OrderItemModel(
+                cuisine_id=item_data.cuisine_id,
+                quantity=item_data.quantity,
+                size=item_data.size,
+                price_at_purchase=price_for_item
+            )
+        )
+
+    # 3. VERIFY the frontend price against the secure backend price
+    # We use math.isclose() to handle potential floating-point inaccuracies
+    if not math.isclose(order_data.client_total_price, backend_total_price):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Price mismatch. Client price: {order_data.client_total_price}, Server price: {backend_total_price}. Please refresh."
+        )
+
+    # 4. Create the order using the TRUSTED, backend-calculated price
     db_order = OrderModel(
-        items=items_string,
-        total_price=order.total_price,
+        total_price=backend_total_price, # <-- Using the secure price
         restaurant_id=restaurant_id,
-        user_id=current_user.id,
-        order_date=str(datetime.now(timezone.utc))
+        user_id=current_user.id
     )
 
-    # 4. Save the order to the database
+    db_order.order_items.extend(order_items_to_create)
+    
     db.add(db_order)
     db.commit()
     db.refresh(db_order)
-    print(f"\n\tOrder.id: {db_order.id}")
-    res = {
-        "id": db_order.id,
-        "items": order.items,
-        "total_price": db_order.total_price,
-        "restaurant_id": db_order.restaurant_id,
-        "user_id": db_order.user_id,
-        "order_date":db_order.order_date
-    }
-
-    return res
-
-
-# @router.get("/orders/{order_id}", response_model=OrderResponse)
-# def get_order_details(
-#     order_id: int,
-#     db: Session = Depends(get_db),
-#     current_user:UserModel= Depends(get_current_user)
-
-# ):
-#     """
-#     Retrieves a single order for the authenticated user.
-#     """
-#     if not isinstance(current_user, UserModel):
-#         raise HTTPException(
-#             status_code=status.HTTP_403_FORBIDDEN,
-#             detail="You are not authorized to view this order."
-#         )
-
-#     order = db.query(OrderModel).filter(
-#         OrderModel.id == order_id, 
-#         OrderModel.user_id == current_user.id
-#     ).first()
     
-#     if not order:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found or you don't have permission to view it.")
-
-#     return order
+    return db_order
 
 
-@router.get("/user/my-orders", response_model=list[OrderResponse])
+
+@router.get("/user/my-orders", response_model=List[OrderResponse])
 def get_user_orders(
     db: Session = Depends(get_db),
-    current_user:UserModel= Depends(get_current_user)
+    current_user: UserModel = Depends(get_current_user)
 ):
     """
-    Retrieves all orders for the authenticated user with restaurant names.
+    Retrieves all orders for the authenticated user, eagerly loading restaurant names and order items.
     """
     if not isinstance(current_user, UserModel):
         raise HTTPException(
@@ -108,17 +116,25 @@ def get_user_orders(
             detail="Only users can view their orders."
         )
     
-    orders_with_names = db.query(OrderModel, RestaurantModel.name).join(RestaurantModel).filter(
-        OrderModel.user_id == current_user.id
-    ).all()
-    
-    # Manually map the joined data to the response schema
-    result = []
-    for order, restaurant_name in orders_with_names:
-        order_dict = order.__dict__
-        order_dict['restaurant_name'] = restaurant_name
-        result.append(order_dict)
+    # Use joinedload to prevent the N+1 query problem
+    orders = db.query(OrderModel).options(
+        joinedload(OrderModel.restaurant),
+        joinedload(OrderModel.order_items).joinedload(OrderItemModel.cuisine)
+    ).filter(OrderModel.user_id == current_user.id).all()
 
+    # Pydantic can now handle the mapping automatically with a bit of help
+    result = []
+    for order in orders:
+        result.append({
+            "id": order.id,
+            "restaurant_name": order.restaurant.name,
+            "order_date": str(order.order_date),
+            "status": order.status,
+            "total_price": order.total_price,
+            "order_items": order.order_items,  # This will be automatically serialized
+            "restaurant_id": order.restaurant_id,
+        })
+        
     return result
 
 
