@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List, Literal 
+from typing import Optional, List, Literal, Dict, Any
+from datetime import datetime 
 from uuid import UUID
 
 # Base schemas for creating and updating data
@@ -221,9 +222,37 @@ class TokenData(BaseModel):
 class User(UserBase):
     id: int
     image_url: Optional[str] = None
-    table_id: Optional[str] = None
+    table_id: Optional[UUID] = None
     current_location: Optional[str] = None
 
     class Config:
         from_attributes = True
 
+class UserInfoForOrder(BaseModel):
+    username: str
+    class Config:
+        from_attributes = True
+
+
+class OrderForRestaurantResponse(BaseModel):
+    id: int
+    order_date: datetime # Using datetime is better than string for APIs
+    status: OrderStatus
+    total_price: float
+    user: UserInfoForOrder         # This includes the customer's username
+    order_items: List[OrderItem]  # This uses your existing OrderItem schema
+
+    class Config:
+        from_attributes = True
+
+class OrderStatusUpdate(BaseModel):
+    new_status: OrderStatus
+
+
+class RestaurantAnalytics(BaseModel):
+    total_revenue: float
+    total_orders: int
+    average_order_value: float
+    top_selling_items: List[Dict[str, Any]]
+    top_revenue_items: List[Dict[str, Any]]
+    revenue_by_day: List[Dict[str, Any]]

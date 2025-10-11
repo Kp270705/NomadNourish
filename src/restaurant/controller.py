@@ -1,18 +1,24 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, Query
-from fastapi import UploadFile, status
-# from starlette.datastructures import UploadFile
-from sqlalchemy.orm import Session 
+from fastapi import UploadFile, status, Request
+from fastapi.responses import StreamingResponse
+
+
+from sqlalchemy import func, Date
+from sqlalchemy.orm import Session, joinedload
+from typing import List
+from datetime import datetime, timedelta
+import math, json
 from typing import Optional, Union, List
 import os, uuid
 
 from database.core import get_db
-from services.authService import get_password_hash
-from models.r_schema import (RestaurantCreate, Restaurant, RestaurantStatusUpdate)
-from models.r_model import (Restaurant as RestaurantModel)
+from services.authService import get_password_hash, get_current_entity_for_stream
+from models.r_schema import (RestaurantCreate, Restaurant, RestaurantStatusUpdate, RestaurantAnalytics)
+from models.r_model import (Restaurant as RestaurantModel, OrderItem as OrderItemModel, Cuisine as CuisineModel, Order as OrderModel, User as UserModel)
 from .service import get_current_restaurant, get_restaurant_status_by_id
 from services.authService import get_current_user_or_restaurant
 from dotenv import load_dotenv
-import json
+import json, asyncio
 
 
 # For Google Cloud Storage
@@ -75,37 +81,29 @@ def get_restaurant(restaurant_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/get_all", response_model=List[Restaurant])
-def get_all_restaurants(
+async def get_all_restaurants(
     db: Session = Depends(get_db),
     redis_client = Depends(get_redis_client),
     location: Optional[str] = Query(None, description="Optional filter by city/location")
     ):
-    # restaurants = db.query(RestaurantModel).all()
     query = db.query(RestaurantModel)
     if location:
         query = query.filter(
             RestaurantModel.location.ilike(f"%{location}%")
         )
-    
     db_restaurants = query.all()
     final_restaurants = []
+
     for rest in db_restaurants:
-        # Get the status from Redis/DB using the caching utility
-        status_data = get_restaurant_status_by_id(db, redis_client, rest.id)
+        status_data = await get_restaurant_status_by_id(db, redis_client, rest.id)
+        rest_pydantic = Restaurant.model_validate(rest)
+        rest_dict = rest_pydantic.model_dump()
+        print(f"\n\n\tStatus Data fetched: {status_data}\n\n")
         
-        # Create a dictionary from the SQLAlchemy object
-        rest_dict = rest.__dict__
-        
-        # Inject the status fields from the cache/DB lookup
         if status_data:
-            rest_dict['operating_status'] = status_data['operating_status']
-            rest_dict['kitchen_status'] = status_data['kitchen_status']
-            rest_dict['delivery_status'] = status_data['delivery_status']
-        
-        # NOTE: Pydantic's from_attributes=True handles most of the mapping, 
-        # but manual modification is needed to inject the status fields if they are not loaded by default.
+            rest_dict.update(status_data)
+
         final_restaurants.append(rest_dict)
-        
     return final_restaurants
 
 
@@ -165,8 +163,9 @@ async def update_restaurant_details(
     return current_restaurant
 
 
+# kitchen status update:
 @router.patch("/status", response_model=Restaurant)
-def update_restaurant_status(
+async def update_restaurant_status(
     status_update: RestaurantStatusUpdate,
     db: Session = Depends(get_db),
     redis_client = Depends(get_redis_client),
@@ -202,8 +201,10 @@ def update_restaurant_status(
         "kitchen_status": current_restaurant.kitchen_status,
         "delivery_status": current_restaurant.delivery_status,
     }
+
+    print(f"\n\n\tStatus Data to cache: {status_data}\n\n")
     # Store the JSON string in Redis (Set a 1 hour TTL - Time To Live)
-    redis_client.set(cache_key, json.dumps(status_data), ex=3600) 
+    await redis_client.set(cache_key, json.dumps(status_data), ex=3600) 
     return current_restaurant
 
 
@@ -216,6 +217,7 @@ def get_my_restaurant_details(
     """
     return current_restaurant
 
+# ======== new live sse event =============
 
 
 @router.patch("/announcement", response_model=Restaurant)
@@ -237,5 +239,74 @@ def update_announcement(
     db.commit()
     db.refresh(current_restaurant)
     return current_restaurant
+
+
+@router.get("/analytics", response_model=RestaurantAnalytics)
+def get_restaurant_analytics(
+    db: Session = Depends(get_db),
+    current_restaurant: RestaurantModel = Depends(get_current_restaurant),
+):
+    """
+    Calculates and returns key business analytics (revenue and sales focused)
+    for the authenticated restaurant.
+    """
+    # 1. Fetch all completed orders for this restaurant
+    completed_orders = db.query(OrderModel).filter(
+        OrderModel.restaurant_id == current_restaurant.id,
+        OrderModel.status == 'Delivered'
+    ).all()
+
+    if not completed_orders:
+        return RestaurantAnalytics(
+            total_revenue=0, total_orders=0, average_order_value=0,
+            top_selling_items=[], top_revenue_items=[], revenue_by_day=[]
+        )
+
+    # 2. Calculate basic stats
+    total_orders = len(completed_orders)
+    total_revenue = sum(order.total_price for order in completed_orders)
+    average_order_value = total_revenue / total_orders
+
+    # 3. Find top 5 selling items by quantity
+    top_selling_items = db.query(
+        CuisineModel.cuisine_name,
+        func.sum(OrderItemModel.quantity).label('total_quantity')
+    ).join(OrderItemModel).join(OrderModel).filter(
+        OrderModel.restaurant_id == current_restaurant.id,
+        OrderModel.status == 'Delivered'
+    ).group_by(CuisineModel.cuisine_name).order_by(func.sum(OrderItemModel.quantity).desc()).limit(5).all()
+
+    # 4. Find top 5 revenue-generating items
+    top_revenue_items = db.query(
+        CuisineModel.cuisine_name,
+        func.sum(OrderItemModel.price_at_purchase * OrderItemModel.quantity).label('total_revenue')
+    ).join(OrderItemModel).join(OrderModel).filter(
+        OrderModel.restaurant_id == current_restaurant.id,
+        OrderModel.status == 'Delivered'
+    ).group_by(CuisineModel.cuisine_name).order_by(func.sum(OrderItemModel.price_at_purchase * OrderItemModel.quantity).desc()).limit(5).all()
+
+    # 5. Get revenue for the last 7 days for a line chart
+    # seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    revenue_by_day = db.query(
+        func.cast(OrderModel.order_date, Date).label('date'),
+        func.sum(OrderModel.total_price).label('daily_revenue')
+    ).filter(
+        OrderModel.restaurant_id == current_restaurant.id,
+        OrderModel.status == 'Delivered',
+        OrderModel.order_date >= seven_days_ago
+    ).group_by('date').order_by('date').all()
+
+    return RestaurantAnalytics(
+        total_revenue=total_revenue,
+        total_orders=total_orders,
+        average_order_value=average_order_value,
+        top_selling_items=[{"name": name, "value": qty} for name, qty in top_selling_items],
+        top_revenue_items=[{"name": name, "value": rev} for name, rev in top_revenue_items],
+        revenue_by_day=[{"date": str(date), "revenue": rev} for date, rev in revenue_by_day]
+    )
+
+
 
 

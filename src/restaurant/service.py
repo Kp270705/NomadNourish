@@ -1,9 +1,9 @@
 from fastapi import Depends, HTTPException, status
 from typing import Annotated
 from sqlalchemy.orm import Session
-import redis, json
+import json
 from cache.redis_client import get_redis_client
-from upstash_redis import Redis as UpstashRedisClient
+from redis.asyncio import Redis
 
 from services.authService import get_current_user_or_restaurant 
 from models.r_model import (Restaurant as RestaurantModel)
@@ -20,7 +20,8 @@ def get_current_restaurant(entity: Annotated[RestaurantModel, Depends(get_curren
     return entity
 
 
-def get_restaurant_status_by_id(db: Session, redis_client: UpstashRedisClient, restaurant_id: int):
+# via redis 
+async def get_restaurant_status_by_id(db: Session, redis_client: Redis, restaurant_id: int):
 
     """
     Implements the Cache-Aside READ strategy.
@@ -28,11 +29,15 @@ def get_restaurant_status_by_id(db: Session, redis_client: UpstashRedisClient, r
     cache_key = f"status:restaurant:{restaurant_id}"
     
     # 1. Check Cache (Fast Read)
-    cached_status = redis_client.get(cache_key)
-    if cached_status:
-        return json.loads(str(cached_status))
+    cached_status = await redis_client.get(cache_key)
+    
+    # Explicitly check for None instead of just `if cached_status:`
+    # Also, remove the unnecessary str() conversion.
+    if cached_status is not None:
+        return json.loads(cached_status)
 
     # 2. Cache Miss: Read from PostgreSQL (Slow Read)
+    # This part of the code is correct and only runs if the cache is empty.
     db_restaurant = db.query(RestaurantModel).filter(
         RestaurantModel.id == restaurant_id
     ).first()
@@ -50,7 +55,9 @@ def get_restaurant_status_by_id(db: Session, redis_client: UpstashRedisClient, r
     print(f"\n\n\tStatus Data to cache: {status_data}\n\n")
     
     status_json = json.dumps(status_data)
-    redis_client.set(cache_key, status_json, ex=3600) # 1 hour TTL
+    await redis_client.set(cache_key, status_json, ex=3600) # 1 hour TTL
     
     return status_data
+
+
 

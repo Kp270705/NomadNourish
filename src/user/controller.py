@@ -22,6 +22,8 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = UserModel(
         username=user.username,
         email=user.email,
+        location=user.location,
+        current_location=user.current_location,
         password=hashed_password
     )
     db.add(db_user)
@@ -29,6 +31,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     
     return db_user
+
 
 
 @router.get("/users/{user_id}", response_model=User)
