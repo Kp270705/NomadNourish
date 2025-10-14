@@ -27,6 +27,7 @@ class CuisineInfo(BaseModel):
     class Config:
         from_attributes = True
 
+
 # Feedbacks:
 class FeedbackBase(BaseModel):
     comments: Optional[str] = None
@@ -64,15 +65,10 @@ class UserBase(BaseModel):
 class CuisineCreate(CuisineBase):
     pass
 
-
-# Order Item create 
-class OrderItemCreate(OrderItemBase):
-    pass
-
-class OrderBase(BaseModel):
-    items: List[OrderItemCreate]
+# Orders 
+class OrderCreate(BaseModel):
+    items: List[OrderItemBase]
     client_total_price: float = Field(..., gt=0) # Must be greater than zero
-
 
 # Restaurants:
 class RestaurantCreate(RestaurantBase):
@@ -111,6 +107,9 @@ class UserUpdate(UserBase):
     image_url: Optional[str] = None
     current_location: Optional[str] = None
 
+class OrderStatusUpdate(BaseModel):
+    new_status: OrderStatus
+
 # ======================================
 
 # Schemas for API responses (e.g., in a GET request)
@@ -138,13 +137,12 @@ class Feedback(FeedbackBase):
 
 
 # Orders:
-
 class OrderItem(BaseModel):
     id: int
     quantity: int
     size: Literal["half", "full"]
     price_at_purchase: float
-    cuisine: CuisineInfo 
+    cuisine: CuisineInfo
 
     class Config:
         from_attributes = True
@@ -153,10 +151,8 @@ class Order(BaseModel):
     id: int
     user_id: int
     restaurant_id: int
-    status: OrderStatus # Add the new status field
-    # This should be the backend-calculated price, which your DB object has
-    total_price: float 
-    
+    status: OrderStatus
+    total_price: float # backend calculated price 
     # The response should contain the list of structured items from the database relationship
     order_items: List[OrderItem] 
 
@@ -198,6 +194,15 @@ class RestaurantMenuResponse(BaseModel):
     restaurant_location: str
     cuisines: List[Cuisine]
 
+class RestaurantAnalytics(BaseModel):
+    total_revenue: float
+    total_orders: int
+    average_order_value: float
+    top_selling_items: List[Dict[str, Any]]
+    top_revenue_items: List[Dict[str, Any]]
+    revenue_by_day: List[Dict[str, Any]]
+
+   
 
 # stats:
 class AppStats(BaseModel):
@@ -233,26 +238,16 @@ class UserInfoForOrder(BaseModel):
     class Config:
         from_attributes = True
 
-
 class OrderForRestaurantResponse(BaseModel):
     id: int
-    order_date: datetime # Using datetime is better than string for APIs
+    order_date: datetime 
     status: OrderStatus
     total_price: float
-    user: UserInfoForOrder         # This includes the customer's username
-    order_items: List[OrderItem]  # This uses your existing OrderItem schema
+    user: UserInfoForOrder         
+    order_items: List[OrderItem] 
+    # cancelled_by: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-class OrderStatusUpdate(BaseModel):
-    new_status: OrderStatus
-
-
-class RestaurantAnalytics(BaseModel):
-    total_revenue: float
-    total_orders: int
-    average_order_value: float
-    top_selling_items: List[Dict[str, Any]]
-    top_revenue_items: List[Dict[str, Any]]
-    revenue_by_day: List[Dict[str, Any]]
+ 

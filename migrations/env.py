@@ -1,19 +1,23 @@
+# ===================================================
 from dotenv import load_dotenv
 import os
-
-# Add these two lines at the top
 load_dotenv()
+# ===================================================
 
 from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
 from alembic import context
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# ===================================================
+db_url = str(os.getenv("PG_PRODUCTION_DB_URI"))
+# db_url = str(os.getenv("DATABASE_URL2"))
+config.set_main_option("sqlalchemy.url", db_url)
+# ===================================================
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

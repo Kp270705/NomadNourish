@@ -97,7 +97,6 @@ def delete_cuisine(
     return
 
 
-
 @router.get("/get_all", response_model=list[Cuisine])
 def list_cuisines(db: Session = Depends(get_db)):
     return db.query(CuisineModel).all()

@@ -8,7 +8,7 @@ import math, json, asyncio
 
 from database.core import get_db
 from services.authService import get_current_user_or_restaurant
-from models.r_schema import OrderBase, Order, OrderResponse, OrderForRestaurantResponse, OrderStatusUpdate
+from models.r_schema import OrderCreate, Order, OrderResponse, OrderForRestaurantResponse, OrderStatusUpdate
 from models.r_model import (Order as OrderModel, User as UserModel, Restaurant as RestaurantModel, Cuisine as CuisineModel, OrderItem as OrderItemModel)
 from user.service import get_current_user
 from restaurant.service import get_current_restaurant
@@ -24,11 +24,11 @@ router = APIRouter(
 # ==========================================================
 # 🔹 ORDER APIs
 
-# For Users:
+# order place by user:
 @router.post("/create/{restaurant_id}", response_model=Order)
 async def create_order(
     restaurant_id: int,
-    order_data: OrderBase, 
+    order_data: OrderCreate, 
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user),
     redis_client = Depends(get_redis_client),
@@ -143,6 +143,10 @@ async def update_order_status(
 
     # Update status and save
     db_order.status = status_update.new_status
+
+    if status_update.new_status == "Cancelled":
+        db_order.cancelled_by = "restaurant"
+
     db.commit()
 
     notification_payload = {
@@ -198,6 +202,7 @@ async def cancel_user_order(
 
     # 5. Update the status
     db_order.status = "Cancelled"
+    db_order.cancelled_by = "user"
     db.commit()
 
     notification_payload = {
@@ -258,7 +263,6 @@ def get_user_orders(
     return result
 
 
-
 @router.get("/restaurant/my-orders", response_model=List[OrderForRestaurantResponse])
 def get_restaurant_orders(
     db: Session = Depends(get_db),
@@ -281,7 +285,6 @@ def get_restaurant_orders(
     return orders
 
 
-
 @router.get("/restaurant/active-orders", response_model=List[OrderForRestaurantResponse])
 def get_restaurant_active_orders(
     db: Session = Depends(get_db),
@@ -301,7 +304,6 @@ def get_restaurant_active_orders(
     ).order_by(OrderModel.order_date.asc()).all() # Show oldest first to prioritize
     
     return orders
-
 
 
 # ==========================================================

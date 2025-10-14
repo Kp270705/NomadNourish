@@ -93,16 +93,13 @@ class Order(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurants.id"))
     order_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
-    
-    # NEW COLUMN: Delivery Status
-    # Possible values: 'Pending', 'Preparing', 'Ready', 'Delivered', 'Cancelled'
     status: Mapped[str] = mapped_column(String(20), default="Pending", nullable=False)
+    cancelled_by: Mapped[str | None] = mapped_column(String(20), nullable=True)
     
     # Relationships
     user = relationship("User", back_populates="orders")
     restaurant = relationship("Restaurant", back_populates="orders")
     order_items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
-
 
 
 class OrderItem(Base):
@@ -122,7 +119,6 @@ class OrderItem(Base):
     # Relationships
     order = relationship("Order", back_populates="order_items")
     cuisine = relationship("Cuisine") # A simple relationship to get cuisine details
-
 
 
 class Feedback(Base):
