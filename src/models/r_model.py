@@ -66,14 +66,11 @@ class Cuisine(Base):
     id: Mapped[int] = mapped_column( BigInteger, Identity(start=1, always=True), primary_key=True)
     cuisine_name: Mapped[str] = mapped_column(String(100), nullable=False)
     
-    # --- NEW PRICE FIELDS ---
     price_half: Mapped[float] = mapped_column(Float, nullable=True) 
-    # Full price is the default required price
     price_full: Mapped[float] = mapped_column(Float, nullable=False) 
     
-    # --- NEW CATEGORY FIELD --- (e.g., 'Veg', 'Non-Veg', 'Egg')
     category: Mapped[str] = mapped_column(String(20), nullable=False)
-    
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurants.id"))
     restaurant_specific_cuisine_id: Mapped[int] = mapped_column(BigInteger, nullable=True) 
     

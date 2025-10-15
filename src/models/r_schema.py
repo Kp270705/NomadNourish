@@ -120,7 +120,8 @@ class Cuisine(CuisineBase):
     id: int
     restaurant_id: int
     restaurant_specific_cuisine_id: Optional[int] = None  # New field for restaurant-specific ID
-
+    is_active: bool
+    
     class Config:
         from_attributes = True
 
