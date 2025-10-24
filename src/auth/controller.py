@@ -32,14 +32,24 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     # Attempt to authenticate as a user
     user = db.query(UserModel).filter(UserModel.email == form_data.username).first()
     if user and verify_password(form_data.password, user.password):
+
         print(f"\n\nUser trying to access: {user.email}")
+
+        user_table_id_str = str(user.table_id)
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user.table_id, "is_restaurant": False, "user_id":user.email}, 
+            data={"sub": user_table_id_str, "is_restaurant": False, "user_id": user.email},
             expires_delta=access_token_expires
         )
+
         print(f"\n\n\tAccess Token: {access_token}\n\n")
-        user_details = [user.username, user.email, user.image_url]
+
+        user_details = {
+            "username": user.username,
+            "email": user.email,
+            "image_url": user.image_url
+        }
+        
         return JSONResponse(content={
             "message": 'user is authenticated', 
             "user_type": 'user', 
@@ -51,14 +61,26 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     # If not a user, attempt to authenticate as a restaurant
     restaurant = db.query(RestaurantModel).filter(RestaurantModel.gstIN == form_data.username).first()
     if restaurant and verify_password(form_data.password, restaurant.password):
+
         print(f"\n\nRestaurant trying to access: {restaurant.name}")
+
+        restaurant_table_id_str = str(restaurant.table_id)
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": restaurant.table_id, "is_restaurant": True, "user_id": restaurant.gstIN},
+            data={"sub": restaurant_table_id_str, "is_restaurant": True, "user_id": restaurant.gstIN},
             expires_delta=access_token_expires
         )
+        
         print(f"\n\n\tAccess Token: {access_token}\n\n")
-        user_details = [restaurant.name, restaurant.location, restaurant.mobile_number, restaurant.image_url, restaurant.gstIN]
+
+        user_details = {
+            "name": restaurant.name,
+            "location": restaurant.location,
+            "mobile_number": restaurant.mobile_number,
+            "image_url": restaurant.image_url,
+            "support_email": restaurant.support_email,
+            "gstIN": restaurant.gstIN
+        }
         return JSONResponse(content={
             "message": 'restaurant is authenticated', 
             "user_type": 'restaurant', 
@@ -78,3 +100,4 @@ def logout_user(token: Annotated[str, Depends(oauth2_scheme)]):
     """
     TOKEN_BLACKLIST.add(token)
     return {"message": "Successfully logged out"}
+

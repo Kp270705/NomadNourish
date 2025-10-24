@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from jose import jwt, JWTError  
@@ -33,6 +33,45 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 # Use a single token URL for both user and restaurant login
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+
+# SSE token check filter
+def get_current_entity_for_stream(
+    token: str = Query(...), # Reads the 'token' from the URL query parameter
+    db: Session = Depends(get_db)
+):
+    """
+    Special authentication for streaming endpoints that get the token
+    from a query parameter instead of a header.
+    """
+    if is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been blacklisted"
+        )
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Login again with correct credentials",
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        is_restaurant = payload.get("is_restaurant", False)
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    if is_restaurant:
+        entity = db.query(RestaurantModel).filter(RestaurantModel.table_id == username).first()
+    else:
+        entity = db.query(UserModel).filter(UserModel.table_id == username).first()
+
+    if entity is None:
+        raise credentials_exception
+    
+    return entity
 
 
 def get_current_user_or_restaurant(
@@ -82,3 +121,4 @@ TOKEN_BLACKLIST = set()
 def is_token_blacklisted(token: str) -> bool:
     """Checks if a token is in the blacklist."""
     return token in TOKEN_BLACKLIST
+

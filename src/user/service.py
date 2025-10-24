@@ -14,3 +14,4 @@ def get_current_user(entity: Annotated[UserModel, Depends(get_current_user_or_re
             detail="You must be a user to access this resource."
         )
     return entity
+

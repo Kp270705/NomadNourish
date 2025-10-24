@@ -1,25 +1,44 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List, Literal, Dict, Any
+from datetime import datetime 
+from uuid import UUID
 
 # Base schemas for creating and updating data
+
+DietaryCategory = Literal["Veg", "Non-Veg", "Egg"]
+OrderStatus = Literal["Pending", "Preparing", "Ready", "Delivered", "Cancelled"]
+
+# restro status: 
+OperatingStatus = Literal["Open", "Closed"]
+KitchenStatus = Literal["Normal", "Busy", "Emergency"]
+DeliveryStatus = Literal["Active", "Inactive"]
+
 
 # Cuisines: 
 class CuisineBase(BaseModel):
     cuisine_name: str
-    cuisine_price: float
+    price_full: float = Field(...) # Must be greater than zero
+    price_half: Optional[float] = Field(None)
+    category: DietaryCategory
+
+class CuisineInfo(BaseModel):
+    cuisine_name: str
+
+    class Config:
+        from_attributes = True
 
 
 # Feedbacks:
 class FeedbackBase(BaseModel):
-    comments: str
-    rating: float
+    comments: Optional[str] = None
+    rating: Optional[float] = None
 
 
 # Orders:
-class OrderBase(BaseModel):
-    items: List[str]
-    total_price: float
-
+class OrderItemBase(BaseModel):
+    cuisine_id: int
+    quantity: int = Field(gt=0) # Must be at least 1
+    size: Literal["half", "full"]
 
 # Restaurants:
 class RestaurantBase(BaseModel):
@@ -27,13 +46,16 @@ class RestaurantBase(BaseModel):
     location: str
     mobile_number: str
     gstIN: str
+    support_email: EmailStr
+    announcement_text: Optional[str] = None
 
 
 # Users:
 class UserBase(BaseModel):
     username: str
     email: EmailStr
-
+    location: Optional[str] = None
+    current_location: Optional[str] = None
 
 # =======================================
 
@@ -42,6 +64,11 @@ class UserBase(BaseModel):
 # Cuisines:
 class CuisineCreate(CuisineBase):
     pass
+
+# Orders 
+class OrderCreate(BaseModel):
+    items: List[OrderItemBase]
+    client_total_price: float = Field(..., gt=0) # Must be greater than zero
 
 # Restaurants:
 class RestaurantCreate(RestaurantBase):
@@ -60,16 +87,28 @@ class UserCreate(UserBase):
 # New schema for updating a cuisine
 class CuisineUpdate(BaseModel):
     cuisine_name: Optional[str] = None
-    cuisine_price: Optional[float] = None
+    price_full: Optional[float] = Field(None)
+    price_half: Optional[float] = Field(None)
+    category: Optional[DietaryCategory] = None
 
 class RestaurantUpdate(BaseModel):
     name: Optional[str] = None
     location: Optional[str] = None
     image_url: Optional[str] = None
+    announcement_text: Optional[str] = None
+
+class RestaurantStatusUpdate(BaseModel):
+    operating_status: Optional[OperatingStatus] = None
+    kitchen_status: Optional[KitchenStatus] = None
+    delivery_status: Optional[DeliveryStatus] = None
 
 class UserUpdate(UserBase):
     name: Optional[str] = None
     image_url: Optional[str] = None
+    current_location: Optional[str] = None
+
+class OrderStatusUpdate(BaseModel):
+    new_status: OrderStatus
 
 # ======================================
 
@@ -81,14 +120,10 @@ class Cuisine(CuisineBase):
     id: int
     restaurant_id: int
     restaurant_specific_cuisine_id: Optional[int] = None  # New field for restaurant-specific ID
-
+    is_active: bool
+    
     class Config:
         from_attributes = True
-
-class RestaurantMenuResponse(BaseModel):
-    restaurant_name: str
-    restaurant_location: str
-    cuisines: List[Cuisine]
 
 
 # Feedbacks:
@@ -103,27 +138,43 @@ class Feedback(FeedbackBase):
 
 
 # Orders:
-class Order(OrderBase):
+class OrderItem(BaseModel):
+    id: int
+    quantity: int
+    size: Literal["half", "full"]
+    price_at_purchase: float
+    cuisine: CuisineInfo
+
+    class Config:
+        from_attributes = True
+
+class Order(BaseModel):
     id: int
     user_id: int
     restaurant_id: int
-    order_date: str
+    status: OrderStatus
+    total_price: float # backend calculated price 
+    # The response should contain the list of structured items from the database relationship
+    order_items: List[OrderItem] 
 
     class Config:
         from_attributes = True
 
 class OrderResponse(BaseModel):
-    id:int
-    items:str
-    total_price:float
+    id: int
+    restaurant_name: str
     restaurant_id: int
-    restaurant_name: str # Add this new field
     order_date: str
-
+    status: OrderStatus # Add the new status field
+    total_price: float
+    order_items: List[OrderItem]
+    cancelled_by: Optional[str] = None
+    
     class Config:
         from_attributes = True
 
-# Users & Restaurants:
+
+# Restaurants:
 class RestaurantOverview(BaseModel):
     name: str
     ratings: Optional[float] = 0.0 # Optional and with a default value
@@ -131,17 +182,36 @@ class RestaurantOverview(BaseModel):
 
 class Restaurant(RestaurantBase):
     id: int
+    operating_status: str
+    kitchen_status: str
+    delivery_status: str
     image_url: Optional[str] = None
-    table_id: Optional[str] = None
+    table_id: Optional[UUID] = None 
 
     class Config:
         from_attributes = True
+
+class RestaurantMenuResponse(BaseModel):
+    restaurant_name: str
+    restaurant_location: str
+    cuisines: List[Cuisine]
+
+class RestaurantAnalytics(BaseModel):
+    total_revenue: float
+    total_orders: int
+    average_order_value: float
+    top_selling_items: List[Dict[str, Any]]
+    top_revenue_items: List[Dict[str, Any]]
+    revenue_by_day: List[Dict[str, Any]]
+
+   
 
 # stats:
 class AppStats(BaseModel):
     total_customers: int
     total_restaurants: int
     total_orders: int
+
 
 # Tokens: 
 class Token(BaseModel):
@@ -159,7 +229,27 @@ class TokenData(BaseModel):
 class User(UserBase):
     id: int
     image_url: Optional[str] = None
-    table_id: Optional[str] = None
+    table_id: Optional[UUID] = None
+    current_location: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+class UserInfoForOrder(BaseModel):
+    username: str
+    class Config:
+        from_attributes = True
+
+class OrderForRestaurantResponse(BaseModel):
+    id: int
+    order_date: datetime 
+    status: OrderStatus
+    total_price: float
+    user: UserInfoForOrder         
+    order_items: List[OrderItem] 
+    # cancelled_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+ 

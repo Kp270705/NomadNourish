@@ -22,17 +22,17 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = UserModel(
         username=user.username,
         email=user.email,
+        location=user.location,
+        current_location=user.current_location,
         password=hashed_password
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-
-    db_user.table_id = f"user_id_{db_user.id}"
-    db.commit()
-    db.refresh(db_user)
     
     return db_user
+
+
 
 @router.get("/users/{user_id}", response_model=User)
 def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -40,3 +40,5 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+

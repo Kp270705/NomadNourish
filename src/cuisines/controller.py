@@ -31,7 +31,9 @@ def create_cuisine(
     # 3. Create the new Cuisine object with the calculated ID
     db_cuisine = CuisineModel(
         cuisine_name=cuisine.cuisine_name,
-        cuisine_price=cuisine.cuisine_price,
+        price_half=cuisine.price_half,
+        price_full=cuisine.price_full,
+        category=cuisine.category,
         restaurant_id=current_restaurant.id,
         restaurant_specific_cuisine_id=new_cuisine_id
     )
@@ -64,15 +66,18 @@ def update_cuisine(
     # Update fields if provided
     for key, value in cuisine_data.model_dump().items():
         if value is not None:
+            print(f"\n\nUpdating {key} to {value}\n\n")
             setattr(db_cuisine, key, value)
-            
+    if db_cuisine.is_active == False:
+        db_cuisine.is_active = True
     db.commit()
     db.refresh(db_cuisine)
     return db_cuisine
 
-# 🔹 New API to delete a cuisine
-@router.delete("/{cuisine_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_cuisine(
+
+# 🔹 API to soft delete a cuisine
+@router.patch("/deactivate/{cuisine_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deactivate_cuisine(
     cuisine_id: int,
     db: Session = Depends(get_db),
     current_restaurant: RestaurantModel = Depends(get_current_restaurant)
@@ -89,10 +94,9 @@ def delete_cuisine(
             detail="Cuisine not found or does not belong to this restaurant."
         )
 
-    db.delete(db_cuisine)
+    db_cuisine.is_active = False
     db.commit()
     return
-
 
 
 @router.get("/get_all", response_model=list[Cuisine])
@@ -107,7 +111,7 @@ def get_restaurant_cuisines(restaurant_id: int, db: Session = Depends(get_db)):
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found.")
 
-    cuisines = db.query(CuisineModel).filter(CuisineModel.restaurant_id == restaurant_id).all()
+    cuisines = db.query(CuisineModel).filter(CuisineModel.restaurant_id == restaurant_id, CuisineModel.is_active == True).all()
     
     # Combine the data into the new response schema
     return {
