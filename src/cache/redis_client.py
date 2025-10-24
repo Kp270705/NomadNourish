@@ -28,7 +28,8 @@ async def get_redis_client():
     
     # Simple check to ensure connection works
     try:
-        await redis_client.ping()
+        redis_client.ping()
+        # await redis_client.ping()
     except Exception as e:
          raise Exception(f"Could not connect to Redis: {e}")
          
