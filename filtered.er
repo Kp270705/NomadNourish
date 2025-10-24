@@ -1,0 +1,65 @@
+[orders]
+    *id {label:"BIGINT"}
+    cancelled_by {label:"VARCHAR(20)"}
+    order_date {label:"TIMESTAMP"}
+    restaurant_id {label:"BIGINT"}
+    status {label:"VARCHAR(20)"}
+    total_price {label:"DOUBLE PRECISION"}
+    user_id {label:"BIGINT"}
+[restaurants]
+    *id {label:"BIGINT"}
+    announcement_text {label:"VARCHAR(1000)"}
+    delivery_status {label:"VARCHAR(20)"}
+    gstIN {label:"VARCHAR(15)"}
+    image_url {label:"VARCHAR(255)"}
+    kitchen_status {label:"VARCHAR(20)"}
+    location {label:"VARCHAR(100)"}
+    mobile_number {label:"VARCHAR(20)"}
+    name {label:"VARCHAR(100)"}
+    operating_status {label:"VARCHAR(20)"}
+    password {label:"VARCHAR(128)"}
+    support_email {label:"VARCHAR(100)"}
+    table_id {label:"UUID"}
+[users]
+    *id {label:"BIGINT"}
+    current_location {label:"VARCHAR(100)"}
+    email {label:"VARCHAR(100)"}
+    image_url {label:"VARCHAR(255)"}
+    is_hotel_owner {label:"BOOLEAN"}
+    location {label:"VARCHAR(100)"}
+    password {label:"VARCHAR(128)"}
+    table_id {label:"UUID"}
+    username {label:"VARCHAR(50)"}
+[cuisines]
+    *id {label:"BIGINT"}
+    category {label:"VARCHAR(20)"}
+    cuisine_name {label:"VARCHAR(100)"}
+    is_active {label:"BOOLEAN"}
+    price_full {label:"DOUBLE PRECISION"}
+    price_half {label:"DOUBLE PRECISION"}
+    restaurant_id {label:"BIGINT"}
+    restaurant_specific_cuisine_id {label:"BIGINT"}
+[feedbacks]
+    *id {label:"BIGINT"}
+    comments {label:"VARCHAR(500)"}
+    order_id {label:"BIGINT"}
+    rating {label:"DOUBLE PRECISION"}
+    restaurant_id {label:"BIGINT"}
+    user_id {label:"BIGINT"}
+[alembic_version]
+    *version_num {label:"VARCHAR(32)"}
+[order_items]
+    *id {label:"BIGINT"}
+    cuisine_id {label:"BIGINT"}
+    order_id {label:"BIGINT"}
+    price_at_purchase {label:"DOUBLE PRECISION"}
+    quantity {label:"INTEGER"}
+    size {label:"VARCHAR(10)"}
+restaurants."id" 1--* orders."restaurant_id"
+users."id" 1--* orders."user_id"
+restaurants."id" 1--* cuisines."restaurant_id"
+restaurants."id" 1--* feedbacks."restaurant_id"
+orders."id" 1--* feedbacks."order_id"
+users."id" 1--* feedbacks."user_id"
+cuisines."id" 1--* order_items."cuisine_id"
+orders."id" 1--* order_items."order_id"

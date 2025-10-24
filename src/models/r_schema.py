@@ -163,11 +163,12 @@ class Order(BaseModel):
 class OrderResponse(BaseModel):
     id: int
     restaurant_name: str
+    restaurant_id: int
     order_date: str
     status: OrderStatus # Add the new status field
     total_price: float
     order_items: List[OrderItem]
-    restaurant_id: int
+    cancelled_by: Optional[str] = None
     
     class Config:
         from_attributes = True

@@ -253,11 +253,12 @@ def get_user_orders(
         result.append({
             "id": order.id,
             "restaurant_name": order.restaurant.name,
+            "restaurant_id": order.restaurant_id,
             "order_date": str(order.order_date),
             "status": order.status,
             "total_price": order.total_price,
             "order_items": order.order_items,  # This will be automatically serialized
-            "restaurant_id": order.restaurant_id,
+            "cancelled_by": order.cancelled_by,
         })
         
     return result
