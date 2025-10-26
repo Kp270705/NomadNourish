@@ -65,6 +65,12 @@ class UserBase(BaseModel):
 class CuisineCreate(CuisineBase):
     pass
 
+
+# Feedbacks:
+class FeedbackCreate(FeedbackBase):
+    order_id: int
+
+
 # Orders 
 class OrderCreate(BaseModel):
     items: List[OrderItemBase]

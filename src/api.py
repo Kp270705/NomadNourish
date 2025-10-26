@@ -6,6 +6,7 @@ from user.controller import router as users_router
 from cuisines.controller import router as cuisines_router
 from orders.controller import router as orders_router
 from stats.controller import router as stats_router
+from feedbacks.controller import router as feedback_router
 
 
 def register_routes(app: FastAPI):
@@ -15,3 +16,4 @@ def register_routes(app: FastAPI):
     app.include_router(cuisines_router)
     app.include_router(orders_router)
     app.include_router(stats_router)
+    app.include_router(feedback_router)
