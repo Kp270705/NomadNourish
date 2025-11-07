@@ -5,7 +5,7 @@ from typing import List
 import os, uuid
 
 from database.core import get_db
-from models.r_schema import (CuisineCreate, Cuisine, RestaurantMenuResponse, CuisineUpdate)
+from models.r_schema import (CuisineCreate, Cuisine, RestaurantMenuResponse, CuisineUpdate, CuisineCategory)
 from models.r_model import (Restaurant as RestaurantModel, Cuisine as CuisineModel)
 from restaurant.service import get_current_restaurant
 
@@ -51,6 +51,7 @@ def update_cuisine(
     db: Session = Depends(get_db),
     current_restaurant: RestaurantModel = Depends(get_current_restaurant)
 ):
+    print(f"\n\nReceived update request for cuisine ID {cuisine_id} of cuisine type: {cuisine_data.cuisine_type}\n\n")
     # Find the cuisine and verify it belongs to the current restaurant
     db_cuisine = db.query(CuisineModel).filter(
         CuisineModel.id == cuisine_id,
@@ -132,3 +133,54 @@ def get_my_cuisines(
     """
     cuisines = db.query(CuisineModel).filter(CuisineModel.restaurant_id == current_restaurant.id).all()
     return cuisines
+
+
+category_details_lookup = {
+    "Momos":    { "id": "cat1", "image": "https://placehold.co/100x100/E86E6E/FFFFFF?text=Momos" },
+    "Noodles":  { "id": "cat2", "image": "https://placehold.co/100x100/5203FF/FFFFFF?text=Noodles" },
+    "Pizzas":   { "id": "cat3", "image": "https://placehold.co/100x100/9AFF03/FFFFFF?text=Pizzas" },
+    "Cakes":    { "id": "cat4", "image": "https://placehold.co/100x100/E8A66E/FFFFFF?text=Cakes" },
+    "Biryani":  { "id": "cat5", "image": "https://placehold.co/100x100/8A6EE8/FFFFFF?text=Biryani" },
+    "Non-Veg":  { "id": "cat6", "image": "https://placehold.co/100x100/E86EA6/FFFFFF?text=Non-Veg" },
+    "Desert":   { "id": "cat7", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Desert" },
+    "Paneer":   { "id": "cat8", "image": "https://placehold.co/100x100/FFDD03/FFFFFF?text=Paneer" },
+    "Street Food":   { "id": "cat9", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Street Food" },
+    "Nachos":   { "id": "cat10", "image": "https://placehold.co/100x100/FC6F03/FFFFFF?text=Nachos" },
+    "Cheese":   { "id": "cat11", "image": "https://placehold.co/100x100/FFB303/FFFFFF?text=Cheese" },
+    "Chicken":   { "id": "cat12", "image": "https://placehold.co/100x100/FC4903/FFFFFF?text=Chicken" },
+}
+
+@router.get(
+    "/categories", 
+    response_model=List[CuisineCategory], 
+    tags=["Cuisine Categories (User)"] # <-- Naya tag, docs mein alag dikhega
+)
+async def get_cuisine_categories_for_user(db: Session = Depends(get_db)): # <-- DB dependency add ki
+    """
+    Yeh endpoint user ke homepage (Svelte) ke liye hai.
+    Yeh database (Cuisine table) se *distinct* category names nikalega
+    aur unhe images ke sath return karega.
+    """
+    print("GET /cuisine/categories hit (for user homepage)")
+    db_categories_tuples = db.query(CuisineModel.cuisine_type).filter(
+        CuisineModel.cuisine_type != None, CuisineModel.is_active == True
+    ).distinct().all()
+    
+    # 2. Tuples ki list ko ek simple Set mein convert karo: {'Momos', 'Pizzas'}
+    # Set fast lookups ke liye aacha hai
+    active_categories_from_db = {category for (category,) in db_categories_tuples}
+    print("\n\tActive categories from DB:", active_categories_from_db)
+    
+    # 3. Ab, hamare "lookup table" se filter karo
+    # Sirf woh categories bhejo jo DB mein active hain
+    final_categories = []
+    for name, details in category_details_lookup.items():
+        if name in active_categories_from_db:
+            final_categories.append({
+                "id": details["id"],
+                "name": name,
+                "image": details["image"]
+            })
+    
+    return final_categories
+

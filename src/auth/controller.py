@@ -47,8 +47,10 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         user_details = {
             "username": user.username,
             "email": user.email,
-            "image_url": user.image_url
+            "image_url": user.image_url,
+            "current_location": user.current_location,
         }
+        print(f"\n\n user location: {user.current_location}\n\n")
         
         return JSONResponse(content={
             "message": 'user is authenticated', 

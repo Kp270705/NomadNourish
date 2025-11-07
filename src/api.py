@@ -7,7 +7,7 @@ from cuisines.controller import router as cuisines_router
 from orders.controller import router as orders_router
 from stats.controller import router as stats_router
 from feedbacks.controller import router as feedback_router
-
+from search.controller import router as search_router
 
 def register_routes(app: FastAPI):
     app.include_router(auth_router)
@@ -17,3 +17,4 @@ def register_routes(app: FastAPI):
     app.include_router(orders_router)
     app.include_router(stats_router)
     app.include_router(feedback_router)
+    app.include_router(search_router)

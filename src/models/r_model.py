@@ -27,6 +27,7 @@ class User(Base):
     orders = relationship("Order", back_populates="user")
     feedbacks = relationship("Feedback", back_populates="user")
 
+
 class Restaurant(Base):
     __tablename__ = "restaurants"
     
@@ -70,6 +71,7 @@ class Cuisine(Base):
     price_full: Mapped[float] = mapped_column(Float, nullable=False) 
     
     category: Mapped[str] = mapped_column(String(20), nullable=False)
+    cuisine_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # New column for cuisine type
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     restaurant_id: Mapped[int] = mapped_column(ForeignKey("restaurants.id"))
     restaurant_specific_cuisine_id: Mapped[int] = mapped_column(BigInteger, nullable=True) 

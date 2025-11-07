@@ -20,6 +20,7 @@ class CuisineBase(BaseModel):
     price_full: float = Field(...) # Must be greater than zero
     price_half: Optional[float] = Field(None)
     category: DietaryCategory
+    cuisine_type: Optional[str] = None  # New field for cuisine type
 
 class CuisineInfo(BaseModel):
     cuisine_name: str
@@ -93,9 +94,10 @@ class UserCreate(UserBase):
 # New schema for updating a cuisine
 class CuisineUpdate(BaseModel):
     cuisine_name: Optional[str] = None
-    price_full: Optional[float] = Field(None)
     price_half: Optional[float] = Field(None)
+    price_full: Optional[float] = Field(None)
     category: Optional[DietaryCategory] = None
+    cuisine_type: Optional[str] = None  
 
 class RestaurantUpdate(BaseModel):
     name: Optional[str] = None
@@ -130,6 +132,13 @@ class Cuisine(CuisineBase):
     
     class Config:
         from_attributes = True
+
+# --- YAHAN ADD KIYA HAI ---
+# User ke homepage par categories dikhane ke liye schema
+class CuisineCategory(BaseModel):
+    id: str
+    name: str
+    image: str
 
 
 # Feedbacks:
@@ -218,6 +227,20 @@ class AppStats(BaseModel):
     total_restaurants: int
     total_orders: int
 
+# Search :
+class SearchSuggestion(BaseModel):
+    # 'type' tells the frontend if it's a restaurant or a dish
+    type: Literal["restaurant", "dish"]    
+    id: Optional[int] = None    
+    name: str    
+    image_url: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class SearchResponse(BaseModel):
+    restaurants: List[SearchSuggestion]
+    dishes: List[SearchSuggestion]
 
 # Tokens: 
 class Token(BaseModel):

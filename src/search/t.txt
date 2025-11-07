@@ -1,0 +1,19 @@
+# 3. Format the results
+    restaurant_suggestions = [
+        SearchSuggestion(
+            type="restaurant",
+            id=rest.id,
+            name=rest.name,
+            image_url=rest.image_url # Send image_url for the frontend
+        ) for rest in db_restaurants
+    ]
+
+    dish_suggestions = [
+        SearchSuggestion(
+            type="dish",
+            name=dish_name[0] # db_dishes is a list of tuples (name,)
+            # You could add a default dish icon/image here if you have one
+        ) for dish_name in db_dishes
+    ]
+    
+    return SearchResponse(restaurants=restaurant_suggestions, dishes=dish_suggestions)

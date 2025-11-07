@@ -3,7 +3,7 @@ from fastapi import UploadFile, status, Request
 from fastapi.responses import StreamingResponse
 
 
-from sqlalchemy import func, Date
+from sqlalchemy import func, Date, or_
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from datetime import datetime, timedelta
@@ -86,12 +86,15 @@ async def get_all_restaurants(
     redis_client = Depends(get_redis_client),
     location: Optional[str] = Query(None, description="Optional filter by city/location")
     ):
-    query = db.query(RestaurantModel)
+    restaurant_query = db.query(RestaurantModel)
+
     if location:
-        query = query.filter(
-            RestaurantModel.location.ilike(f"%{location}%")
-        )
-    db_restaurants = query.all()
+        locations_list = [loc.strip() for loc in location.split(',') if loc.strip()]
+        location_conditions = [RestaurantModel.location.ilike(f"%{loc}%") for loc in locations_list]
+        if location_conditions:
+            restaurant_query = restaurant_query.filter(or_(*location_conditions))
+    db_restaurants = restaurant_query.limit(5).all()
+
     final_restaurants = []
 
     for rest in db_restaurants:
@@ -106,6 +109,45 @@ async def get_all_restaurants(
         final_restaurants.append(rest_dict)
     return final_restaurants
 
+
+@router.get("/search_by_cuisine", response_model=List[Restaurant])
+async def search_restaurants_by_cuisine(
+    cuisine_query: str = Query(..., min_length=1, description="Cuisine name to search for"),
+    db: Session = Depends(get_db),
+    redis_client = Depends(get_redis_client), # Keep redis for status
+):
+    """
+    Searches for restaurants that offer a specific cuisine (case-insensitive).
+    """
+    # Find cuisines matching the query
+    matching_cuisines = db.query(CuisineModel).filter(
+        CuisineModel.cuisine_name.ilike(f"%{cuisine_query}%"),
+        CuisineModel.is_active == True # Only search active cuisines
+    ).all()
+
+    # Get the unique IDs of restaurants that offer these cuisines
+    restaurant_ids = {cuisine.restaurant_id for cuisine in matching_cuisines}
+
+    if not restaurant_ids:
+        return [] # Return empty list if no matches
+
+    # Fetch the details of those specific restaurants
+    db_restaurants = db.query(RestaurantModel).filter(
+        RestaurantModel.id.in_(list(restaurant_ids))
+    ).all()
+
+    # --- Add Status Info (same logic as your /get_all endpoint) ---
+    final_restaurants = []
+    for rest in db_restaurants:
+        status_data = await get_restaurant_status_by_id(db, redis_client, rest.id)
+        rest_pydantic = Restaurant.model_validate(rest)
+        rest_dict = rest_pydantic.model_dump()
+        if status_data:
+            rest_dict.update(status_data)
+        final_restaurants.append(rest_dict)
+    # --- End Status Info ---
+
+    return final_restaurants
 
 # used to edit restaurant details:
 @router.patch("/update_details", response_model=Restaurant)
