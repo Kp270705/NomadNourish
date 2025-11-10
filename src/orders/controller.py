@@ -276,9 +276,6 @@ def get_restaurant_orders(
     Frontend will handle all date filtering.
     """
     print(f"GET /restaurant/my-orders hit. Sending ALL orders for restaurant ID: {current_restaurant.id}")
-    
-    # Query ab simple hai:
-    # Sirf saare orders get karo, sort karke
     orders = db.query(OrderModel).options(
         joinedload(OrderModel.user),
         joinedload(OrderModel.order_items).joinedload(OrderItemModel.cuisine)

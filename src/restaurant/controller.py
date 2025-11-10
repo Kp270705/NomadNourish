@@ -109,7 +109,7 @@ async def get_all_restaurants(
         final_restaurants.append(rest_dict)
     return final_restaurants
 
-# --- YEH RAHA MODIFIED ENDPOINT ---
+
 @router.get("/by_category/{category_name}", response_model=List[Restaurant])
 def get_restaurants_by_category(
     category_name: str,
@@ -147,6 +147,8 @@ def get_restaurants_by_category(
         )
         
     return restaurants
+
+
 @router.get("/search_by_cuisine", response_model=List[Restaurant])
 async def search_restaurants_by_cuisine(
     cuisine_query: str = Query(..., min_length=1, description="Cuisine name to search for"),
