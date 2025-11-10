@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session 
-from sqlalchemy import func
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
+from typing import List, Optional
 import os, uuid
 
 from database.core import get_db
@@ -136,51 +136,80 @@ def get_my_cuisines(
 
 
 category_details_lookup = {
-    "Momos":    { "id": "cat1", "image": "https://placehold.co/100x100/E86E6E/FFFFFF?text=Momos" },
+    # Fast Food and Snacks
+    "Momos":    { "id": "cat1", "image": "https://placehold.co/100x100/CB6555/FFFFFF?text=Momos" },
     "Noodles":  { "id": "cat2", "image": "https://placehold.co/100x100/5203FF/FFFFFF?text=Noodles" },
-    "Pizzas":   { "id": "cat3", "image": "https://placehold.co/100x100/9AFF03/FFFFFF?text=Pizzas" },
-    "Cakes":    { "id": "cat4", "image": "https://placehold.co/100x100/E8A66E/FFFFFF?text=Cakes" },
-    "Biryani":  { "id": "cat5", "image": "https://placehold.co/100x100/8A6EE8/FFFFFF?text=Biryani" },
-    "Non-Veg":  { "id": "cat6", "image": "https://placehold.co/100x100/E86EA6/FFFFFF?text=Non-Veg" },
-    "Desert":   { "id": "cat7", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Desert" },
-    "Paneer":   { "id": "cat8", "image": "https://placehold.co/100x100/FFDD03/FFFFFF?text=Paneer" },
-    "Street Food":   { "id": "cat9", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Street Food" },
+    "Pizzas":   { "id": "cat3", "image": "https://placehold.co/100x100/BCCF57/FFFFFF?text=Pizzas" },
+    "Pastas":   { "id": "cat4", "image": "https://placehold.co/100x100/9AFF03/FFFFFF?text=Pastas" },
+    "Burgers":   { "id": "cat5", "image": "https://placehold.co/100x100/9AFF03/FFFFFF?text=Burgers" },
+    "Snacks":   { "id": "cat6", "image": "https://placehold.co/100x100/D7AC3E/FFFFFF?text=Snacks" },
+    "Chaat":   { "id": "cat7", "image": "https://placehold.co/100x100/A5833E/FFFFFF?text=Chaat" },
+    "Street Food":   { "id": "cat8", "image": "https://placehold.co/100x100/C1AC3E/FFFFFF?text=Street Food" },
+
+    # Foreign Famous Cuisines:
+    "Cheese":   { "id": "cat9", "image": "https://placehold.co/100x100/FFB303/FFFFFF?text=Cheese" },
     "Nachos":   { "id": "cat10", "image": "https://placehold.co/100x100/FC6F03/FFFFFF?text=Nachos" },
-    "Cheese":   { "id": "cat11", "image": "https://placehold.co/100x100/FFB303/FFFFFF?text=Cheese" },
-    "Chicken":   { "id": "cat12", "image": "https://placehold.co/100x100/FC4903/FFFFFF?text=Chicken" },
+    "Shwarma":   { "id": "cat11", "image": "https://placehold.co/100x100/FF943E/FFFFFF?text=Shwarma" },
+
+    # Regular Categories
+    "Paneer":   { "id": "cat12", "image": "https://placehold.co/100x100/A6AfA4/FFFFFF?text=Paneer" },
+    "Egg":   { "id": "cat13", "image": "https://placehold.co/100x100/E1D7A4/FFFFFF?text=Egg" },
+    "Chicken":   { "id": "cat14", "image": "https://placehold.co/100x100/FB472B/FFFFFF?text=Chicken" },
+    "Non-Veg":   { "id": "cat15", "image": "https://placehold.co/100x100/FFDD03/FFFFFF?text=Non-Veg" },
+    "Biryani":   { "id": "cat16", "image": "https://placehold.co/100x100/FFDD03/FFFFFF?text=Biryani" },
+    "Rice":   { "id": "cat17", "image": "https://placehold.co/100x100/E1F1F9/FFFFFF?text=Rice" },
+
+    # Sweet Dishes
+    "Cakes":    { "id": "cat18", "image": "https://placehold.co/100x100/E8A66E/FFFFFF?text=Cakes" },
+    "Deserts":   { "id": "cat19", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Deserts" },
+    "Ice Creams":   { "id": "cat20", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Ice Creams" },
+
+    # Beverages and Drinks
+    "Shakes":   { "id": "cat21", "image": "https://placehold.co/100x100/7E7360/FFFFFF?text=Shakes" },
+    "Juices":   { "id": "cat22", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Juices" },
+    "Cold Drinks":   { "id": "cat23", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Cold Drinks" },
+    "Beverages":   { "id": "cat24", "image": "https://placehold.co/100x100/6EE8D8/FFFFFF?text=Beverages" },
 }
 
-@router.get(
-    "/categories", 
-    response_model=List[CuisineCategory], 
-    tags=["Cuisine Categories (User)"] # <-- Naya tag, docs mein alag dikhega
-)
-async def get_cuisine_categories_for_user(db: Session = Depends(get_db)): # <-- DB dependency add ki
-    """
-    Yeh endpoint user ke homepage (Svelte) ke liye hai.
-    Yeh database (Cuisine table) se *distinct* category names nikalega
-    aur unhe images ke sath return karega.
-    """
-    print("GET /cuisine/categories hit (for user homepage)")
-    db_categories_tuples = db.query(CuisineModel.cuisine_type).filter(
-        CuisineModel.cuisine_type != None, CuisineModel.is_active == True
-    ).distinct().all()
+@router.get( "/categories", response_model=List[CuisineCategory], )
+async def get_cuisine_categories_for_user(
+    location: Optional[str] = Query(None, description="Optional: Filter categories by user's location"),
+    db: Session = Depends(get_db)
+):
+    print(f"GET /cuisine/categories hit. Location: {location}")
+
+    restaurant_query = db.query(RestaurantModel.id).filter(
+        RestaurantModel.operating_status == "Open"
+    )
+    if location:
+        locations_list = [loc.strip() for loc in location.split(',') if loc.strip()]
+        location_conditions = [RestaurantModel.location.ilike(f"%{loc}%") for loc in locations_list]
+        
+        if location_conditions:
+            restaurant_query = restaurant_query.filter(or_(*location_conditions))
     
-    # 2. Tuples ki list ko ek simple Set mein convert karo: {'Momos', 'Pizzas'}
-    # Set fast lookups ke liye aacha hai
+    matching_restaurant_ids = [id for (id,) in restaurant_query.all()]
+
+    if not matching_restaurant_ids:
+        db_categories_tuples = []
+    else:
+        query = db.query(CuisineModel.cuisine_type).filter(
+            CuisineModel.restaurant_id.in_(matching_restaurant_ids),
+            CuisineModel.cuisine_type != None,
+            CuisineModel.is_active == True
+        )
+        db_categories_tuples = query.distinct().all()
+
     active_categories_from_db = {category for (category,) in db_categories_tuples}
-    print("\n\tActive categories from DB:", active_categories_from_db)
     
-    # 3. Ab, hamare "lookup table" se filter karo
-    # Sirf woh categories bhejo jo DB mein active hain
-    final_categories = []
+    final_cuisine_types = []
     for name, details in category_details_lookup.items():
         if name in active_categories_from_db:
-            final_categories.append({
+            final_cuisine_types.append({
                 "id": details["id"],
                 "name": name,
                 "image": details["image"]
             })
     
-    return final_categories
+    return final_cuisine_types
 

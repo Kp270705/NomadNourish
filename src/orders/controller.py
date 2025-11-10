@@ -1,9 +1,10 @@
 # src/orders/controller.py
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, joinedload
-from typing import List, Union
+from typing import List, Union, Optional
+from datetime import datetime, timedelta, timezone
 import math, json, asyncio
 
 from database.core import get_db
@@ -270,19 +271,19 @@ def get_restaurant_orders(
     current_restaurant: RestaurantModel = Depends(get_current_restaurant)
 ):
     """
-    Retrieves all orders for the authenticated restaurant owner,
+    Retrieves ALL orders for the authenticated restaurant owner,
     eagerly loading all related data for high performance.
+    Frontend will handle all date filtering.
     """
-    # This query uses `joinedload` to fetch all related data (user, order_items,
-    # and cuisines) in a single, efficient database call.
-    # It also sorts the orders by date, showing the newest ones first.
+    print(f"GET /restaurant/my-orders hit. Sending ALL orders for restaurant ID: {current_restaurant.id}")
+    
+    # Query ab simple hai:
+    # Sirf saare orders get karo, sort karke
     orders = db.query(OrderModel).options(
         joinedload(OrderModel.user),
         joinedload(OrderModel.order_items).joinedload(OrderItemModel.cuisine)
     ).filter(OrderModel.restaurant_id == current_restaurant.id).order_by(OrderModel.order_date.desc()).all()
     
-    # Because our Pydantic schema has `from_attributes = True`, we can just
-    # return the SQLAlchemy objects. FastAPI handles all the conversion.
     return orders
 
 

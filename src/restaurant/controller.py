@@ -109,7 +109,44 @@ async def get_all_restaurants(
         final_restaurants.append(rest_dict)
     return final_restaurants
 
+# --- YEH RAHA MODIFIED ENDPOINT ---
+@router.get("/by_category/{category_name}", response_model=List[Restaurant])
+def get_restaurants_by_category(
+    category_name: str,
+    location: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    print(f"Fetching restaurants for category: {category_name}, location: {location}")
+    
+    query = db.query(RestaurantModel).join(CuisineModel).filter(
+        CuisineModel.cuisine_type == category_name,
+        CuisineModel.is_active == True,
+        RestaurantModel.operating_status == "Open"
+    )
+    
+    # --- IMPROVED LOCATION FILTER ---
+    if location:
+        locations_list = [loc.strip() for loc in location.split(',') if loc.strip()]
+        location_conditions = [RestaurantModel.location.ilike(f"%{loc}%") for loc in locations_list]
+        if location_conditions:
+            print(f"\tApplying robust location filter for: {locations_list}")
+            query = query.filter(or_(*location_conditions))
 
+    # --------------------------------
+        
+    restaurants = query.distinct().all() 
+    
+    if not restaurants:
+        detail_msg = f"No open restaurants found serving '{category_name}'"
+        if location:
+            detail_msg += f" near {location}"
+        
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=detail_msg
+        )
+        
+    return restaurants
 @router.get("/search_by_cuisine", response_model=List[Restaurant])
 async def search_restaurants_by_cuisine(
     cuisine_query: str = Query(..., min_length=1, description="Cuisine name to search for"),
@@ -122,16 +159,14 @@ async def search_restaurants_by_cuisine(
     # Find cuisines matching the query
     matching_cuisines = db.query(CuisineModel).filter(
         CuisineModel.cuisine_name.ilike(f"%{cuisine_query}%"),
-        CuisineModel.is_active == True # Only search active cuisines
+        CuisineModel.is_active == True
     ).all()
 
-    # Get the unique IDs of restaurants that offer these cuisines
     restaurant_ids = {cuisine.restaurant_id for cuisine in matching_cuisines}
 
     if not restaurant_ids:
-        return [] # Return empty list if no matches
+        return []
 
-    # Fetch the details of those specific restaurants
     db_restaurants = db.query(RestaurantModel).filter(
         RestaurantModel.id.in_(list(restaurant_ids))
     ).all()
@@ -145,7 +180,6 @@ async def search_restaurants_by_cuisine(
         if status_data:
             rest_dict.update(status_data)
         final_restaurants.append(rest_dict)
-    # --- End Status Info ---
 
     return final_restaurants
 
